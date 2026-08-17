@@ -129,6 +129,7 @@ def _default_concept_root() -> Path:
         "Set the concept root explicitly."
     )
 
+
 def _default_ricu_concept_dict() -> Path:
     return _env_path("OPENICU_YAIB_RICU_CONCEPT_DICT") or (
         Path.home() / "workspace" / "ricu" / "inst" / "extdata" / "config" / "concept-dict.json"
@@ -156,12 +157,11 @@ def default_dataset_paths(
     function arguments or by environment variables:
 
     - ``OPENICU_YAIB_OUTPUT_ROOT``
-    - ``OPENICU_YAIB_CONCEPT_ROOT``
     - ``OPENICU_YAIB_ICUSTAYS_CSV``
     - ``OPENICU_YAIB_RICU_CONCEPT_DICT``
 
-    If these are not set, the function falls back to the local layout used by
-    the example notebooks: generated files go below ``~/output/openicu_yaib``.
+    Output and RICU paths may use the documented environment-variable defaults.
+    The OpenICU concept root must be supplied explicitly.
     """
     dataset = dataset.lower()
     out = _as_path(output_root) if output_root is not None else _default_output_root()

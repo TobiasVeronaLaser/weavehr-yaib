@@ -1,6 +1,8 @@
 # openicu-yaib
 
-`openicu-yaib` converts OpenICU concept outputs to YAIB-style wide tables. The repository also contains optional workflows for validating compatible datasets against RICU.
+`openicu-yaib` converts OpenICU concept outputs to a YAIB-compatible wide-table representation. For datasets that also have a configured RICU source, it can additionally generate comparable OpenICU and RICU outputs and produce diagnostic comparison reports.
+
+The repository does **not** run YAIB or YAIB-cohorts itself. Its role is the OpenICU → YAIB-wide conversion and the technical comparison of OpenICU outputs against RICU where a matching RICU source is available.
 
 ## Dataset workflows
 
@@ -19,16 +21,36 @@ There is exactly one notebook per requested dataset in `example/datasets/`:
 
 The duplicated `mimic-iii` requirement is represented as `mimic-iii` and `mimic-iii-demo`, matching the existing multi-dataset feature branch and the RICU sources `mimic` / `mimic_demo`.
 
-Every notebook performs the full OpenICU export over **all concept parquet files present for that dataset**. The resulting schema contains one column per discovered OpenICU concept. YAIB's dynamic representation is numeric, so concepts without numeric values remain present as all-null numeric columns rather than being silently omitted. A CSV manifest records every concept parquet used.
+Every notebook performs the full OpenICU export over **all concept parquet files present for that dataset**. The resulting schema contains one column per discovered OpenICU concept. The wide representation used here is numeric, so concepts without numeric values remain present as all-null numeric columns rather than being silently omitted. A CSV manifest records every concept parquet used.
 
-For datasets with a RICU source, the current validation workflow can additionally:
+This conversion should not be interpreted as meaning that every OpenICU concept is used by YAIB. OpenICU can also produce concepts that are outside the scope of the YAIB-wide variables used by this validation workflow.
 
-1. runs the one matching R wrapper from `scripts/datasets/`;
+For datasets with a RICU source, the notebook additionally:
+
+1. runs the matching R wrapper from `scripts/datasets/`;
 2. creates the OpenICU YAIB/RICU-compatible 168-hour wide table;
 3. normalizes the RICU wide reference to the same ICU windows;
-4. compares **only the first 7 days (`0..168` hours)** and writes overlap, coverage, missingness, value-difference and reproduction-accuracy inputs/reports.
+4. compares the OpenICU and RICU outputs over the configured first-168-hour window and writes separate diagnostic reports for overlap, coverage, missingness, value differences, and reproduction accuracy.
+
+The first 168 hours (7 days) are the **current comparison window used by this project**. This repository does not claim a clinical, benchmark-specific, or technical rationale for why exactly seven days were chosen, and the 168-hour window is not an inherent limitation of the general OpenICU → wide-table conversion.
 
 `mimic-iv-demo` and `nwicu` intentionally have no R file and no RICU comparison because they have no corresponding native source in the configured RICU source set.
+
+### Interpreting the validation reports
+
+The generated reports are **separate diagnostics**, not components of one blended validation score.
+
+Examples include:
+
+- key and stay overlap;
+- concept-wise non-null coverage;
+- missingness on common `(stay_id, time)` keys;
+- absolute and relative numerical value differences where both sides contain a value;
+- stay- and row-level reproduction statistics.
+
+In particular, `value_diff` is only one diagnostic report and should not be interpreted as the overall validation result.
+
+The comparison code itself does **not** implement or enforce a canonical `<1% per concept` acceptance rule. If a project-level `<1% per concept` criterion is used during manual validation, that is an external working convention and its exact metric should be stated explicitly rather than inferred from the available reports.
 
 RICU source mapping:
 
@@ -103,7 +125,9 @@ result = write_all_concepts_wide(
 )
 ```
 
-Optional RICU validation workflows can create a bounded 7-day subset with `build_and_write_yaib_wide_for_dataset(...)` and compare it using `compare_openicu_wide_to_ricu_for_dataset(...)`. These workflows are separate from the all-concepts YAIB export.
+Using `max_hours=None` performs the general wide-table export without imposing the 168-hour validation window.
+
+For the RICU-backed comparison workflow, the dataset notebooks call `build_and_write_yaib_wide_for_dataset(...)` and `compare_openicu_wide_to_ricu_for_dataset(...)`. The reports produced by `openicu_yaib.compare` are intended as complementary diagnostics and should be interpreted individually.
 
 ## Repository layout
 
@@ -117,6 +141,6 @@ src/openicu_yaib/
   datasets.py                 # canonical dataset/RICU registry
   stays.py                    # dataset-specific stay table discovery/mapping
   transform.py                # YAIB/RICU-compatible dynamic transform
-  compare.py                  # overlap/difference/reproduction metrics
-  workflow.py                 # notebook-friendly 7-day validation workflow
+  compare.py                  # overlap/difference/reproduction diagnostics
+  workflow.py                 # notebook-friendly bounded validation workflow
 ```

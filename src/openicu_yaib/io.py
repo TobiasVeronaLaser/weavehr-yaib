@@ -136,6 +136,37 @@ def _time_as_hours(expr: pl.Expr, dtype: pl.DataType, numeric_scale_hours: float
     return expr.cast(pl.Float64) * numeric_scale_hours
 
 
+def scan_openicu_aumc_stays(
+    visit_start_path: str | Path,
+    visit_end_path: str | Path,
+) -> pl.LazyFrame:
+    """Build normalized AUMC ICU stays from OpenICU visit events."""
+    start = pl.scan_parquet(visit_start_path).select(
+        [
+            pl.col("subject_id").cast(pl.Int64),
+            pl.col("visit_occurrence_id").cast(pl.Int64).alias("stay_id"),
+            (
+                pl.col("time").dt.epoch("ms").cast(pl.Float64) / 3_600_000.0
+            ).alias("intime_hours"),
+        ]
+    )
+    end = pl.scan_parquet(visit_end_path).select(
+        [
+            pl.col("subject_id").cast(pl.Int64),
+            pl.col("visit_occurrence_id").cast(pl.Int64).alias("stay_id"),
+            (
+                pl.col("time").dt.epoch("ms").cast(pl.Float64) / 3_600_000.0
+            ).alias("outtime_hours"),
+        ]
+    )
+
+    return start.join(
+        end,
+        on=["subject_id", "stay_id"],
+        how="left",
+    )
+
+
 def scan_dataset_stays(path: str | Path, spec) -> pl.LazyFrame:
     """Read a dataset-specific raw ICU-stay table into normalized hour units."""
     path = Path(path)
@@ -226,10 +257,12 @@ def scan_openicu_subject_concept_hours(
     missing = sorted(required - set(schema.names()))
     if missing:
         raise ValueError(f"Concept parquet {path} is missing columns: {missing}")
-    return lf.select(
-        [
-            pl.col("subject_id").cast(pl.Int64),
-            _time_as_hours(pl.col("time"), schema["time"], numeric_scale_hours).alias("time_hours"),
-            pl.col("numeric_value").cast(pl.Float64),
-        ]
-    )
+    columns = [
+        pl.col("subject_id").cast(pl.Int64),
+        _time_as_hours(pl.col("time"), schema["time"], numeric_scale_hours).alias("time_hours"),
+        pl.col("numeric_value").cast(pl.Float64),
+    ]
+    if "visit_occurrence_id" in schema.names():
+        columns.append(pl.col("visit_occurrence_id").cast(pl.Int64))
+
+    return lf.select(columns)

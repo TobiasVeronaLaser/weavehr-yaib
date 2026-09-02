@@ -10,7 +10,11 @@ import polars as pl
 
 from .aggregation import uses_ricu_aggregation
 from .concepts import RICU_TO_OPENICU
-from .io import scan_dataset_stays, scan_openicu_subject_concept_hours
+from .io import (
+    scan_dataset_stays,
+    scan_openicu_aumc_stays,
+    scan_openicu_subject_concept_hours,
+)
 from .ricu_meta import RicuConceptMeta
 from .stays import dataset_stay_spec, find_dataset_stay_file
 
@@ -176,9 +180,18 @@ def _concept_table(
             pl.col("time_hours").floor().cast(pl.Int64).alias("time"),
         )
     else:
+        if "visit_occurrence_id" in events.collect_schema().names():
+            mapped = (
+                events.with_columns(
+                    pl.col("visit_occurrence_id").cast(pl.Int64).alias("stay_id")
+                )
+                .join(stays, on=["subject_id", "stay_id"], how="inner")
+            )
+        else:
+            mapped = events.join(stays, on="subject_id", how="inner")
+
         mapped = (
-            events.join(stays, on="subject_id", how="inner")
-            .filter(
+            mapped.filter(
                 (pl.col("time_hours") >= pl.col("intime_hours"))
                 & (
                     pl.col("outtime_hours").is_null()
@@ -214,6 +227,7 @@ def build_all_concepts_wide(
     max_hours: int | None = None,
     include_grid: bool = True,
     ricu_concept_dict: str | Path | None = None,
+    normalized_stays: pl.LazyFrame | None = None,
 ) -> tuple[pl.LazyFrame, list[ConceptFile]]:
     """Build a numeric YAIB-wide table from every available OpenICU concept.
 
@@ -234,10 +248,15 @@ def build_all_concepts_wide(
         if ricu_concept_dict is not None and uses_ricu_aggregation(dataset)
         else None
     )
-    resolved_stays = (
-        Path(stays_path).expanduser().resolve() if stays_path else find_dataset_stay_file(dataset)
-    )
-    stays = scan_dataset_stays(resolved_stays, spec) if resolved_stays is not None else None
+    if normalized_stays is not None:
+        stays = normalized_stays
+    else:
+        resolved_stays = (
+            Path(stays_path).expanduser().resolve()
+            if stays_path
+            else find_dataset_stay_file(dataset)
+        )
+        stays = scan_dataset_stays(resolved_stays, spec) if resolved_stays is not None else None
 
     tables = [
         _concept_table(
@@ -305,10 +324,28 @@ def write_all_concepts_wide(
     out = dataset_dir / name
     manifest = dataset_dir / (out.stem + "_concepts.csv")
 
+    normalized_stays = None
+    if dataset.lower() == "aumc" and stays_path is None:
+        extraction_root = workspace.parent / "datasets" / "extraction" / "data" / "aumc"
+        visit_starts = sorted(extraction_root.rglob("VISIT_START.parquet"))
+        visit_ends = sorted(extraction_root.rglob("VISIT_END.parquet"))
+
+        if len(visit_starts) != 1 or len(visit_ends) != 1:
+            raise FileNotFoundError(
+                "Expected exactly one AUMC VISIT_START.parquet and VISIT_END.parquet "
+                f"below {extraction_root}"
+            )
+
+        normalized_stays = scan_openicu_aumc_stays(
+            visit_starts[0],
+            visit_ends[0],
+        )
+
     wide, concepts = build_all_concepts_wide(
         dataset=dataset,
         concept_root=croot,
         stays_path=stays_path,
+        normalized_stays=normalized_stays,
         max_hours=max_hours,
         include_grid=include_grid,
         ricu_concept_dict=ricu_concept_dict,

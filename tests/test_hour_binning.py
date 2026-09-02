@@ -64,3 +64,32 @@ def test_datetime_relative_hours_use_floor_bins() -> None:
     )
 
     assert result == [0, 0, 0, 0, 1, 1, 1, 2]
+
+
+def test_dataset_stay_mapping_prefers_visit_occurrence_id() -> None:
+    events = pl.DataFrame(
+        {
+            "subject_id": [1, 1],
+            "visit_occurrence_id": [100, 200],
+            "time_hours": [5.0, 5.0],
+            "numeric_value": [10.0, 20.0],
+        }
+    ).lazy()
+
+    stays = pl.DataFrame(
+        {
+            "subject_id": [1, 1],
+            "stay_id": [100, 200],
+            "intime_hours": [0.0, 0.0],
+            "outtime_hours": [10.0, 10.0],
+        }
+    ).lazy()
+
+    result = (
+        map_subject_events_to_dataset_stays(events, stays)
+        .sort("stay_id")
+        .collect()
+    )
+
+    assert result["stay_id"].to_list() == [100, 200]
+    assert result["numeric_value"].to_list() == [10.0, 20.0]

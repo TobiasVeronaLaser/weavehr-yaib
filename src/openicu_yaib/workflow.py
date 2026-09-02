@@ -27,6 +27,7 @@ from .compare import (
     value_diff_report,
 )
 from .concepts import DYNAMIC_VARS, RICU_TO_OPENICU
+from .io import scan_openicu_aumc_stays
 from .stays import dataset_stay_spec, find_dataset_stay_file
 from .transform import build_dynamic_table
 
@@ -217,6 +218,7 @@ def build_and_write_yaib_wide(
     concept_root: str | Path,
     icustays_csv: str | Path | None,
     stay_spec=None,
+    normalized_stays: pl.LazyFrame | None = None,
     ricu_concept_dict: str | Path,
     output_path: str | Path,
     dataset: str = "mimic-iv",
@@ -241,12 +243,17 @@ def build_and_write_yaib_wide(
     out.parent.mkdir(parents=True, exist_ok=True)
 
     resolved_icustays = _as_path(icustays_csv) if icustays_csv is not None else None
-    use_grid = resolved_icustays is not None if include_grid is None else include_grid
+    use_grid = (
+        resolved_icustays is not None or normalized_stays is not None
+        if include_grid is None
+        else include_grid
+    )
 
     lf = build_dynamic_table(
         concept_root=_as_path(concept_root),
         icustays_csv=resolved_icustays,
         stay_spec=stay_spec,
+        normalized_stays=normalized_stays,
         ricu_concept_dict=_as_path(ricu_concept_dict),
         dataset=dataset,
         version=version,
@@ -316,10 +323,33 @@ def build_and_write_yaib_wide_for_dataset(
         )
     )
     spec = dataset_stay_spec(dataset)
+
+    normalized_stays = None
+    resolved_icustays = paths.icustays_csv
+
+    if dataset.lower() == "aumc" and icustays_csv is None:
+        workspace = paths.concept_root.parent
+        extraction_root = workspace.parent / "datasets" / "extraction" / "data" / "aumc"
+        visit_starts = sorted(extraction_root.rglob("VISIT_START.parquet"))
+        visit_ends = sorted(extraction_root.rglob("VISIT_END.parquet"))
+
+        if len(visit_starts) != 1 or len(visit_ends) != 1:
+            raise FileNotFoundError(
+                "Expected exactly one AUMC VISIT_START.parquet and VISIT_END.parquet "
+                f"below {extraction_root}"
+            )
+
+        normalized_stays = scan_openicu_aumc_stays(
+            visit_starts[0],
+            visit_ends[0],
+        )
+        resolved_icustays = None
+
     return build_and_write_yaib_wide(
         concept_root=paths.concept_root,
-        icustays_csv=paths.icustays_csv,
+        icustays_csv=resolved_icustays,
         stay_spec=spec,
+        normalized_stays=normalized_stays,
         ricu_concept_dict=paths.ricu_concept_dict,
         output_path=out,
         dataset=paths.dataset,
@@ -443,8 +473,13 @@ def normalize_ricu_dynamic_reference(
 
     if "time" not in reference.columns:
         lookup = {name.lower(): name for name in reference.columns}
-        if "labresultoffset" in lookup:
-            source_time = lookup["labresultoffset"]
+        source_time = None
+        for candidate in ("labresultoffset", "measuredat"):
+            if candidate in lookup:
+                source_time = lookup[candidate]
+                break
+
+        if source_time is not None:
             reference = reference.with_columns(
                 _series_to_hours(reference[source_time]).alias("time")
             )

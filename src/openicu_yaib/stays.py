@@ -107,7 +107,7 @@ _SPECS = {
     "aumc": DatasetStaySpec(
         "aumc",
         ("admissions.csv",),
-        "admissionid",
+        "patientid",
         "admissionid",
         "admittedat",
         "dischargedat",

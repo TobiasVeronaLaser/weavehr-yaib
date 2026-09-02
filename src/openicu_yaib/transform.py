@@ -94,7 +94,16 @@ def map_subject_events_to_dataset_stays(
     filter_to_icu_window: bool = True,
 ) -> pl.LazyFrame:
     """Map normalized subject events to normalized dataset ICU stays."""
-    mapped = events.join(stays, on="subject_id", how="inner")
+    if "visit_occurrence_id" in events.collect_schema().names():
+        mapped = (
+            events.with_columns(
+                pl.col("visit_occurrence_id").cast(pl.Int64).alias("stay_id")
+            )
+            .join(stays, on=["subject_id", "stay_id"], how="inner")
+        )
+    else:
+        mapped = events.join(stays, on="subject_id", how="inner")
+
     if filter_to_icu_window:
         mapped = mapped.filter(
             (pl.col("time_hours") >= pl.col("intime_hours"))
@@ -279,6 +288,7 @@ def build_dynamic_table(
     concept_root: str | Path,
     icustays_csv: str | Path | None = None,
     stay_spec: DatasetStaySpec | None = None,
+    normalized_stays: pl.LazyFrame | None = None,
     ricu_concept_dict: str | Path | None = None,
     dataset: str = "mimic-iv",
     version: str | None = None,
@@ -305,13 +315,16 @@ def build_dynamic_table(
     mapping = concept_mapping or RICU_TO_OPENICU
     ricu_meta = RicuConceptMeta.from_json(ricu_concept_dict)
 
-    if icustays_csv is None and include_grid:
+    if icustays_csv is None and normalized_stays is None and include_grid:
         raise ValueError(
             "include_grid=True requires a dataset ICU-stay table. "
             "Set OPENICU_YAIB_<DATASET>_STAYS or OPENICU_YAIB_DATA_ROOT."
         )
 
-    if icustays_csv is not None and stay_spec is not None:
+    if normalized_stays is not None:
+        stays = normalized_stays
+        dataset_stays = True
+    elif icustays_csv is not None and stay_spec is not None:
         stays = scan_dataset_stays(icustays_csv, stay_spec)
         dataset_stays = True
     elif icustays_csv is not None:

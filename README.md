@@ -100,6 +100,24 @@ project/
 
 For a separate output directory, the same `yaib/<dataset>/...` subtree is created there. By default `concept/` is expected beside `yaib/`; pass `concept_root=` explicitly if the concepts live elsewhere.
 
+### AUMC stay mapping
+
+AUMC requires explicit admission provenance because a patient can have multiple
+ICU admissions. The raw AmsterdamUMCdb stay mapping uses `patientid` as
+`subject_id` and `admissionid` as `stay_id`.
+
+When an AUMC OpenICU workspace is used without an explicit stay-table override,
+the workflow automatically builds normalized ICU windows from the OpenICU
+`VISIT_START.parquet` and `VISIT_END.parquet` extraction outputs. Concept
+events that contain `visit_occurrence_id` are mapped directly by
+`(subject_id, visit_occurrence_id)` rather than being joined to every stay of
+the same patient. This preserves admission provenance and prevents events from
+one admission being assigned to another admission of the same patient.
+
+For the RICU comparison, AUMC reference exports may use `measuredat` as their
+time column; the comparison workflow normalizes that column to the same
+hour-based representation used by the other supported RICU references.
+
 ## Install
 
 ```bash

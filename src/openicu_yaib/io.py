@@ -167,6 +167,48 @@ def scan_openicu_aumc_stays(
     )
 
 
+
+def scan_openicu_hirid_stays(
+    admission_path: str | Path,
+    observations_path: str | Path,
+) -> pl.LazyFrame:
+    """Build HiRID ICU stay windows matching RICU semantics.
+
+    RICU uses ICU admission as the start and the latest observation timestamp
+    per patient as the stay end.
+    """
+    admission = (
+        pl.scan_parquet(admission_path)
+        .select(
+            [
+                pl.col("subject_id").cast(pl.Int64),
+                (
+                    pl.col("time").dt.epoch("ms").cast(pl.Float64)
+                    / 3_600_000.0
+                ).alias("intime_hours"),
+            ]
+        )
+        .unique(subset=["subject_id"])
+    )
+
+    observation_end = (
+        pl.scan_parquet(observations_path)
+        .group_by("subject_id")
+        .agg(
+            (
+                pl.col("time").max().dt.epoch("ms").cast(pl.Float64)
+                / 3_600_000.0
+            ).alias("outtime_hours")
+        )
+    )
+
+    return (
+        admission.join(observation_end, on="subject_id", how="left")
+        .with_columns(pl.col("subject_id").alias("stay_id"))
+        .select("subject_id", "stay_id", "intime_hours", "outtime_hours")
+    )
+
+
 def scan_dataset_stays(path: str | Path, spec) -> pl.LazyFrame:
     """Read a dataset-specific raw ICU-stay table into normalized hour units."""
     path = Path(path)

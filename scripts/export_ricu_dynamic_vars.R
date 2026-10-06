@@ -28,19 +28,25 @@ out <- Sys.getenv(
 
 dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
 
-dynamic_vars <- c("alb", "alp", "alt", "ast", "be", "bicar", "bili", "bili_dir",
-                  "bnd", "bun", "ca", "cai", "ck", "ckmb", "cl", "crea", "crp",
-                  "dbp", "fgn", "fio2", "glu", "hgb", "hr", "inr_pt", "k", "lact",
-                  "lymph", "map", "mch", "mchc", "mcv", "methb", "mg", "na", "neut",
-                  "o2sat", "pco2", "ph", "phos", "plt", "po2", "ptt", "resp", "sbp",
-                  "temp", "tnt", "urine", "wbc")
+dynamic_vars_env <- Sys.getenv("RICU_DYNAMIC_VARS", unset = "")
+
+dynamic_vars <- if (nzchar(dynamic_vars_env)) {
+  trimws(strsplit(dynamic_vars_env, ",", fixed = TRUE)[[1]])
+} else {
+  c("alb", "alp", "alt", "ast", "be", "bicar", "bili", "bili_dir",
+    "bnd", "bun", "ca", "cai", "ck", "ckmb", "cl", "crea", "crp",
+    "dbp", "fgn", "fio2", "glu", "hgb", "hr", "inr_pt", "k", "lact",
+    "lymph", "map", "mch", "mchc", "mcv", "methb", "mg", "na", "neut",
+    "o2sat", "pco2", "ph", "phos", "plt", "po2", "ptt", "resp", "sbp",
+    "temp", "tnt", "urine", "wbc")
+}
 
 interval <- as.difftime(1, units = "hours")
 df <- load_concepts(dynamic_vars, src = src, interval = interval)
 dt <- as.data.table(df)
 
 print(names(dt))
-print(head(dt))
+message("Rows: ", nrow(dt))
 print(meta_vars(df))
 
 # Normalize charttime to integer hours if present as difftime.

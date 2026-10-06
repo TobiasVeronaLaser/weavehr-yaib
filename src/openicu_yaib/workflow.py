@@ -27,7 +27,7 @@ from .compare import (
     value_diff_report,
 )
 from .concepts import DYNAMIC_VARS, RICU_TO_OPENICU
-from .io import scan_openicu_aumc_stays
+from .io import scan_openicu_aumc_stays, scan_openicu_hirid_stays
 from .stays import dataset_stay_spec, find_dataset_stay_file
 from .transform import build_dynamic_table
 
@@ -327,6 +327,25 @@ def build_and_write_yaib_wide_for_dataset(
     normalized_stays = None
     resolved_icustays = paths.icustays_csv
 
+    if dataset.lower() == "hirid" and icustays_csv is None:
+        workspace = paths.concept_root.parent
+        extraction_root = workspace / "extraction" / "hirid"
+
+        admissions = sorted(extraction_root.rglob("ICU_ADMISSION.parquet"))
+        observations = sorted(extraction_root.rglob("OBSERVATION.parquet"))
+
+        if len(admissions) != 1 or len(observations) != 1:
+            raise FileNotFoundError(
+                "Expected exactly one HiRID ICU_ADMISSION.parquet and "
+                f"OBSERVATION.parquet below {extraction_root}"
+            )
+
+        normalized_stays = scan_openicu_hirid_stays(
+            admissions[0],
+            observations[0],
+        )
+        resolved_icustays = None
+
     if dataset.lower() == "aumc" and icustays_csv is None:
         workspace = paths.concept_root.parent
         extraction_root = workspace.parent / "datasets" / "extraction" / "data" / "aumc"
@@ -474,7 +493,12 @@ def normalize_ricu_dynamic_reference(
     if "time" not in reference.columns:
         lookup = {name.lower(): name for name in reference.columns}
         source_time = None
-        for candidate in ("labresultoffset", "measuredat"):
+        for candidate in (
+            "labresultoffset",
+            "respcarestatusoffset",
+            "measuredat",
+            "datetime",
+        ):
             if candidate in lookup:
                 source_time = lookup[candidate]
                 break

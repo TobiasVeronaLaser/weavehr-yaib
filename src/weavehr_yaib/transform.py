@@ -23,6 +23,7 @@ from .ricu_meta import RicuConceptMeta
 from .stay_ids import StaySource, weavehr_stay_id_space
 from .stays import (
     DatasetStaySpec,
+    make_hourly_stay_grid,
     require_raw_stay_table_compatible,
     require_weavehr_stays,
     resolve_dataset_stay_table,
@@ -445,24 +446,7 @@ def build_dynamic_table(
     if include_grid:
         assert stays is not None
         if dataset_stays:
-            normalized = stays.rename(
-                {"intime_hours": "intime", "outtime_hours": "outtime"}
-            ).with_columns(pl.col("intime").cast(pl.Float64), pl.col("outtime").cast(pl.Float64))
-            los = normalized.with_columns((pl.col("outtime") - pl.col("intime")).alias("los_hours"))
-            end_expr = pl.col("los_hours").floor().cast(pl.Int64)
-            if max_hours is not None:
-                end_expr = pl.min_horizontal(end_expr, pl.lit(max_hours))
-            grid = (
-                los.with_columns(
-                    pl.when(pl.col("los_hours").is_null() | (pl.col("los_hours") < 0))
-                    .then(0 if max_hours is None else max_hours)
-                    .otherwise(end_expr)
-                    .alias("end_time")
-                )
-                .select("stay_id", pl.int_ranges(0, pl.col("end_time") + 1).alias("time"))
-                .explode("time")
-                .with_columns(pl.col("time").cast(pl.Int64))
-            )
+            grid = make_hourly_stay_grid(stays, max_hours=max_hours)
         else:
             grid = make_yaib_grid(stays, max_hours=max_hours, end_rounding=grid_end_rounding)
         wide = grid.join(wide, on=["stay_id", "time"], how="left")

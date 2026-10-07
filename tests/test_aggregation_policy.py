@@ -1,4 +1,4 @@
-from openicu_yaib.aggregation import uses_ricu_aggregation
+from weavehr_yaib.aggregation import uses_ricu_aggregation
 
 
 def test_native_ricu_dataset_uses_ricu_aggregation() -> None:

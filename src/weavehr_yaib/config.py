@@ -1,4 +1,4 @@
-"""Config-first API for OpenICU -> YAIB mortality dynamic conversion."""
+"""Config-first API for WeavEHR -> YAIB mortality dynamic conversion."""
 
 from __future__ import annotations
 
@@ -10,12 +10,15 @@ import yaml
 
 
 @dataclass(frozen=True)
-class OpenICUYAIBConfig:
+class WeavEHRYAIBConfig:
     """Resolved configuration for building a YAIB mortality dynamic table."""
 
     concept_root: Path
     dataset: str = "mimic-iv"
     version: str | None = "1.0.0"
+    # WeavEHR dataset version (``version`` is the concept version). None
+    # resolves it from the project and fails if several versions are present.
+    dataset_version: str | None = None
     icustays_csv: Path | None = None
     ricu_concept_dict: Path | None = None
     dynamic_vars: list[str] | None = None
@@ -79,8 +82,8 @@ def _load_unit_mapping(path: Path | None) -> dict[str, Any] | None:
     return mapping
 
 
-def load_config(path: str | Path) -> OpenICUYAIBConfig:
-    """Load and resolve an ``openicu_yaib.yml`` config file."""
+def load_config(path: str | Path) -> WeavEHRYAIBConfig:
+    """Load and resolve a ``weavehr_yaib.yml`` config file."""
     config_path = Path(path).resolve()
     base_dir = config_path.parent
     data = _read_yaml(config_path)
@@ -109,10 +112,15 @@ def load_config(path: str | Path) -> OpenICUYAIBConfig:
     if max_hours == -1:
         max_hours = None
 
-    return OpenICUYAIBConfig(
+    return WeavEHRYAIBConfig(
         concept_root=concept_root,
         dataset=str(concepts.get("dataset", "mimic-iv")),
         version=concepts.get("version", "1.0.0"),
+        dataset_version=(
+            None
+            if concepts.get("dataset_version") in (None, "", "null")
+            else str(concepts.get("dataset_version"))
+        ),
         icustays_csv=_resolve_path(data.get("icustays_csv"), base_dir=base_dir),
         ricu_concept_dict=_resolve_path(data.get("ricu_concept_dict"), base_dir=base_dir),
         dynamic_vars=_load_dynamic_vars(dynamic_vars_path),

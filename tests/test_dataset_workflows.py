@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from openicu_yaib.workflow import dataset_ricu_code, default_dataset_paths
+from weavehr_yaib.workflow import dataset_ricu_code, default_dataset_paths
 
 
 @pytest.mark.parametrize(

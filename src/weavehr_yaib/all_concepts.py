@@ -1,4 +1,4 @@
-"""YAIB-wide export across every OpenICU concept parquet present for a dataset."""
+"""YAIB-wide export across every WeavEHR concept parquet present for a dataset."""
 
 from __future__ import annotations
 
@@ -9,10 +9,49 @@ from pathlib import Path
 import polars as pl
 
 from .aggregation import uses_ricu_aggregation
-from .concepts import RICU_TO_OPENICU
-from .io import scan_dataset_stays, scan_openicu_subject_concept_hours
+from .concepts import RICU_TO_WEAVEHR
+from .io import (
+    require_concept_column,
+    scan_dataset_stays,
+    scan_weavehr_subject_concept_hours,
+    stay_link_column,
+)
 from .ricu_meta import RicuConceptMeta
-from .stays import dataset_stay_spec, find_dataset_stay_file
+from .stay_ids import StaySource, weavehr_stay_id_space
+from .stays import (
+    SIC_CASE_ID_HINT,
+    SIC_DATASETS,
+    dataset_stay_spec,
+    find_dataset_stay_file,
+    require_raw_stay_table_compatible,
+    require_weavehr_stays,
+    resolve_dataset_stay_table,
+)
+from .versions import (
+    DatasetVersion,
+    resolve_weavehr_version,
+    sink_with_provenance,
+    weavehr_provenance,
+)
+from .workspace import (
+    concept_root_from_output,
+    resolve_weavehr_workspace,
+    weavehr_aumc_stays,
+    weavehr_hirid_stays,
+    weavehr_sic_stays,
+    yaib_root_from_output,
+)
+
+__all__ = [
+    "AllConceptsExportResult",
+    "ConceptFile",
+    "build_all_concepts_wide",
+    "concept_root_from_output",
+    "discover_dataset_concepts",
+    "resolve_weavehr_workspace",
+    "write_all_concepts_wide",
+    "yaib_root_from_output",
+]
 
 
 @dataclass(frozen=True)
@@ -29,48 +68,13 @@ class AllConceptsExportResult:
     concepts: tuple[str, ...]
     n_rows: int
     n_stays: int
-
-
-def resolve_openicu_workspace(path: str | Path) -> Path:
-    """Resolve the directory containing extraction/concept/sharding/persisting.
-
-    Accepted inputs are an OpenICU project root (containing ``workspace``), the
-    workspace itself, the concept directory, or an arbitrary output directory.
-    For an arbitrary directory we use that directory as the workspace root.
-    """
-    root = Path(path).expanduser().resolve()
-    if root.name == "concept":
-        return root.parent
-    if (root / "workspace" / "concept").exists():
-        return root / "workspace"
-    if (root / "concept").exists() or any(
-        (root / n).exists() for n in ("extraction", "sharding", "persisting")
-    ):
-        return root
-    return root
-
-
-def yaib_root_from_output(path: str | Path) -> Path:
-    """Return/create ``yaib`` next to the normal OpenICU workspace steps."""
-    workspace = resolve_openicu_workspace(path)
-    out = workspace / "yaib"
-    out.mkdir(parents=True, exist_ok=True)
-    return out
-
-
-def concept_root_from_output(path: str | Path) -> Path:
-    """Return the concept root implied by an OpenICU project/workspace path."""
-    root = Path(path).expanduser().resolve()
-    if root.name == "concept":
-        return root
-    workspace = resolve_openicu_workspace(root)
-    return workspace / "concept"
+    dataset_version: DatasetVersion | None = None
 
 
 def discover_dataset_concepts(concept_root: str | Path, dataset: str) -> list[ConceptFile]:
     """Discover all concept parquets named ``<dataset>.parquet``.
 
-    OpenICU's standard layout is ``concept/<concept>/<version>/<dataset>.parquet``.
+    WeavEHR's standard layout is ``concept/<concept>/<version>/<dataset>.parquet``.
     Nested concept identifiers are supported as well; the concept name is the
     path between ``concept_root`` and the version directory.
     """
@@ -87,7 +91,7 @@ def discover_dataset_concepts(concept_root: str | Path, dataset: str) -> list[Co
         version = rel.parts[-2] if len(rel.parts) >= 3 else None
         concept_parts = rel.parts[:-2] if len(rel.parts) >= 3 else rel.parts[:-1]
         name = "/".join(concept_parts) or path.parent.name
-        # Most OpenICU concept roots are <concept>/<version>/<dataset>.parquet.
+        # Most WeavEHR concept roots are <concept>/<version>/<dataset>.parquet.
         if len(rel.parts) == 3:
             name = rel.parts[0]
         found.append(ConceptFile(name=name, version=version, path=path))
@@ -119,16 +123,16 @@ def _grid_from_normalized_stays(stays: pl.LazyFrame, max_hours: int | None) -> p
 
 # Additional RICU concepts that are not part of the standard dynamic-variable
 # mapping but do have relevant hourly aggregation metadata.
-_RICU_AGGREGATION_TO_OPENICU = {
-    **RICU_TO_OPENICU,
+_RICU_AGGREGATION_TO_WEAVEHR = {
+    **RICU_TO_WEAVEHR,
     "dobu_dur": "dobutamine_duration",
     "dopa_dur": "dopamine_duration",
     "epi_dur": "epinephrine_duration",
     "norepi_dur": "norepinephrine_duration",
 }
 
-_OPENICU_TO_RICU_AGGREGATION = {
-    openicu_name: ricu_name for ricu_name, openicu_name in _RICU_AGGREGATION_TO_OPENICU.items()
+_WEAVEHR_TO_RICU_AGGREGATION = {
+    weavehr_name: ricu_name for ricu_name, weavehr_name in _RICU_AGGREGATION_TO_WEAVEHR.items()
 }
 
 
@@ -162,9 +166,12 @@ def _concept_table(
     numeric_time_scale_hours: float,
     max_hours: int | None,
     ricu_meta: RicuConceptMeta | None,
+    dataset_version: str | None = None,
 ) -> pl.LazyFrame:
-    events = scan_openicu_subject_concept_hours(
-        item.path, numeric_scale_hours=numeric_time_scale_hours
+    events = scan_weavehr_subject_concept_hours(
+        item.path,
+        numeric_scale_hours=numeric_time_scale_hours,
+        dataset_version=dataset_version,
     )
     if stays is None:
         if not subject_is_stay:
@@ -176,9 +183,16 @@ def _concept_table(
             pl.col("time_hours").floor().cast(pl.Int64).alias("time"),
         )
     else:
+        link = stay_link_column(events.collect_schema().names())
+        if link is not None:
+            mapped = events.with_columns(pl.col(link).cast(pl.Int64).alias("stay_id")).join(
+                stays, on=["subject_id", "stay_id"], how="inner"
+            )
+        else:
+            mapped = events.join(stays, on="subject_id", how="inner")
+
         mapped = (
-            events.join(stays, on="subject_id", how="inner")
-            .filter(
+            mapped.filter(
                 (pl.col("time_hours") >= pl.col("intime_hours"))
                 & (
                     pl.col("outtime_hours").is_null()
@@ -192,7 +206,7 @@ def _concept_table(
     mapped = mapped.filter(pl.col("time") >= 0)
     if max_hours is not None:
         mapped = mapped.filter(pl.col("time") <= max_hours)
-    ricu_name = _OPENICU_TO_RICU_AGGREGATION.get(item.name)
+    ricu_name = _WEAVEHR_TO_RICU_AGGREGATION.get(item.name)
     aggregate = (
         ricu_meta.aggregate_for(ricu_name, default="median")
         if ricu_meta is not None and ricu_name is not None
@@ -214,10 +228,12 @@ def build_all_concepts_wide(
     max_hours: int | None = None,
     include_grid: bool = True,
     ricu_concept_dict: str | Path | None = None,
+    normalized_stays: pl.LazyFrame | None = None,
+    dataset_version: str | None = None,
 ) -> tuple[pl.LazyFrame, list[ConceptFile]]:
-    """Build a numeric YAIB-wide table from every available OpenICU concept.
+    """Build a numeric YAIB-wide table from every available WeavEHR concept.
 
-    Every discovered concept is represented as a column. OpenICU concepts whose
+    Every discovered concept is represented as a column. WeavEHR concepts whose
     ``numeric_value`` is entirely null therefore remain an all-null column; this
     deliberately keeps the full concept inventory visible instead of silently
     dropping text/static concepts from the schema.
@@ -234,10 +250,17 @@ def build_all_concepts_wide(
         if ricu_concept_dict is not None and uses_ricu_aggregation(dataset)
         else None
     )
-    resolved_stays = (
-        Path(stays_path).expanduser().resolve() if stays_path else find_dataset_stay_file(dataset)
-    )
-    stays = scan_dataset_stays(resolved_stays, spec) if resolved_stays is not None else None
+    if normalized_stays is not None:
+        stays = normalized_stays
+    else:
+        resolved_stays = find_dataset_stay_file(
+            dataset, explicit=stays_path or None, dataset_version=dataset_version
+        )
+        if resolved_stays is not None:
+            require_raw_stay_table_compatible(spec.dataset)
+        stays = scan_dataset_stays(resolved_stays, spec) if resolved_stays is not None else None
+    if stays is None:
+        require_weavehr_stays(dataset)
 
     tables = [
         _concept_table(
@@ -247,6 +270,7 @@ def build_all_concepts_wide(
             numeric_time_scale_hours=spec.numeric_time_scale_hours,
             max_hours=max_hours,
             ricu_meta=ricu_meta,
+            dataset_version=dataset_version,
         )
         for item in concepts
     ]
@@ -271,7 +295,7 @@ def build_all_concepts_wide(
 def write_all_concepts_wide(
     *,
     dataset: str,
-    openicu_output: str | Path,
+    weavehr_output: str | Path,
     concept_root: str | Path | None = None,
     stays_path: str | Path | None = None,
     max_hours: int | None = None,
@@ -279,17 +303,23 @@ def write_all_concepts_wide(
     output_name: str | None = None,
     output_root: str | Path | None = None,
     ricu_concept_dict: str | Path | None = None,
+    dataset_version: str | None = None,
 ) -> AllConceptsExportResult:
     """Write the full-concept wide parquet.
 
     By default, output is written under ``<workspace>/yaib/<dataset>``.
     If ``output_root`` is provided, that directory is used instead.
+
+    The WeavEHR dataset version is resolved (see
+    :func:`~weavehr_yaib.versions.resolve_weavehr_version`) and recorded in the
+    manifest and a ``.provenance.json`` sidecar. Several versions require an
+    explicit ``dataset_version``.
     """
-    workspace = resolve_openicu_workspace(openicu_output)
+    workspace = resolve_weavehr_workspace(weavehr_output)
     croot = (
         Path(concept_root).expanduser().resolve()
         if concept_root
-        else concept_root_from_output(openicu_output)
+        else concept_root_from_output(weavehr_output)
     )
 
     if output_root is None:
@@ -298,28 +328,76 @@ def write_all_concepts_wide(
         dataset_dir = Path(output_root).expanduser().resolve()
     dataset_dir.mkdir(parents=True, exist_ok=True)
     name = output_name or (
-        "openicu_all_concepts_wide.parquet"
+        "weavehr_all_concepts_wide.parquet"
         if max_hours is None
-        else f"openicu_all_concepts_wide_{max_hours}h.parquet"
+        else f"weavehr_all_concepts_wide_{max_hours}h.parquet"
     )
     out = dataset_dir / name
     manifest = dataset_dir / (out.stem + "_concepts.csv")
+
+    version = resolve_weavehr_version(
+        dataset=dataset,
+        concept_files=[x.path for x in discover_dataset_concepts(croot, dataset)],
+        workspace=croot.parent,
+        dataset_version=dataset_version,
+    )
+
+    # Event-based stays for AUMC, HiRID and SIC; otherwise a raw stay table of
+    # the same dataset version (or none).
+    normalized_stays = None
+    stay_source: StaySource = "unknown"
+    stay_info: dict[str, object] = {}
+    if dataset.lower() == "aumc" and stays_path is None:
+        normalized_stays = weavehr_aumc_stays(workspace, version=version.version)
+        stay_source = "weavehr_visit_events"
+    elif dataset.lower() == "hirid" and stays_path is None:
+        normalized_stays = weavehr_hirid_stays(workspace, version=version.version)
+        stay_source = "weavehr_hirid_events"
+    elif dataset.lower() in SIC_DATASETS and stays_path is None:
+        require_concept_column(
+            [x.path for x in discover_dataset_concepts(croot, dataset)], "case_id", SIC_CASE_ID_HINT
+        )
+        normalized_stays = weavehr_sic_stays(workspace, version=version.version)
+        stay_source = "weavehr_sic_cases_events"
+    else:
+        stay_table = resolve_dataset_stay_table(
+            dataset, explicit=stays_path, dataset_version=version.version
+        )
+        if stay_table is not None:
+            stays_path = stay_table.path
+            stay_info = stay_table.as_provenance()
+            stay_source = "raw_stay_table"
 
     wide, concepts = build_all_concepts_wide(
         dataset=dataset,
         concept_root=croot,
         stays_path=stays_path,
+        normalized_stays=normalized_stays,
         max_hours=max_hours,
         include_grid=include_grid,
         ricu_concept_dict=ricu_concept_dict,
+        dataset_version=version.version,
     )
-    wide.sink_parquet(out)
+    sink_with_provenance(
+        wide,
+        out,
+        weavehr_provenance(
+            version,
+            max_hours=max_hours,
+            stay_source=stay_source,
+            stay_id_space=weavehr_stay_id_space(dataset, stay_source),
+            **stay_info,
+        ),
+    )
     pl.DataFrame(
         {
             "concept": [x.name for x in concepts],
             "concept_version": [x.version for x in concepts],
+            "dataset_version": [version.version] * len(concepts),
+            "dataset_version_source": [version.source] * len(concepts),
             "source_parquet": [str(x.path) for x in concepts],
-        }
+        },
+        schema_overrides={"dataset_version": pl.String},
     ).write_csv(manifest)
     summary = (
         pl.scan_parquet(out)
@@ -333,4 +411,5 @@ def write_all_concepts_wide(
         concepts=tuple(x.name for x in concepts),
         n_rows=int(summary[0]),
         n_stays=int(summary[1]),
+        dataset_version=version,
     )

@@ -1,4 +1,4 @@
-"""Core OpenICU -> YAIB/RICU dynamic table transformation."""
+"""Core WeavEHR -> YAIB/RICU dynamic table transformation."""
 
 from __future__ import annotations
 
@@ -8,17 +8,31 @@ from typing import Literal
 
 import polars as pl
 
-from .concepts import DYNAMIC_VARS, RICU_TO_OPENICU
+from .concepts import DYNAMIC_VARS, RICU_TO_WEAVEHR
 from .io import (
     find_concept_file,
+    mapped_concept_files,
     scan_dataset_stays,
     scan_mimic_icustays,
-    scan_openicu_concept,
-    scan_openicu_dynamic_concept,
-    scan_openicu_subject_concept_hours,
+    scan_weavehr_concept,
+    scan_weavehr_dynamic_concept,
+    scan_weavehr_subject_concept_hours,
+    stay_link_column,
 )
 from .ricu_meta import RicuConceptMeta
-from .stays import DatasetStaySpec
+from .stay_ids import StaySource, weavehr_stay_id_space
+from .stays import (
+    DatasetStaySpec,
+    require_raw_stay_table_compatible,
+    require_weavehr_stays,
+    resolve_dataset_stay_table,
+)
+from .versions import (
+    DatasetVersion,
+    resolve_weavehr_version,
+    sink_with_provenance,
+    weavehr_provenance,
+)
 
 AggregationMode = Literal["mean", "ricu"]
 MissingConcepts = Literal["warn", "fail", "ignore"]
@@ -61,7 +75,7 @@ def map_events_to_stays(
     *,
     filter_to_icu_window: bool = True,
 ) -> pl.LazyFrame:
-    """Map subject-level OpenICU concept events to ICU stays.
+    """Map subject-level WeavEHR concept events to ICU stays.
 
     If ``filter_to_icu_window`` is true, an event is assigned to a stay iff
     ``event.time >= intime`` and ``event.time <= outtime``. The output time is
@@ -93,8 +107,19 @@ def map_subject_events_to_dataset_stays(
     *,
     filter_to_icu_window: bool = True,
 ) -> pl.LazyFrame:
-    """Map normalized subject events to normalized dataset ICU stays."""
-    mapped = events.join(stays, on="subject_id", how="inner")
+    """Map normalized subject events to normalized dataset ICU stays.
+
+    Events carrying a stay-link column (AUMC ``visit_occurrence_id``, SIC
+    ``case_id``) are mapped to exactly that stay; others join on subject_id.
+    """
+    link = stay_link_column(events.collect_schema().names())
+    if link is not None:
+        mapped = events.with_columns(pl.col(link).cast(pl.Int64).alias("stay_id")).join(
+            stays, on=["subject_id", "stay_id"], how="inner"
+        )
+    else:
+        mapped = events.join(stays, on="subject_id", how="inner")
+
     if filter_to_icu_window:
         mapped = mapped.filter(
             (pl.col("time_hours") >= pl.col("intime_hours"))
@@ -115,6 +140,7 @@ def map_subject_events_to_dataset_stays(
 def aggregate_dataset_concept_hourly(
     *,
     concept_file: str | Path,
+    dataset_version: str | None = None,
     stays: pl.LazyFrame,
     stay_spec: DatasetStaySpec,
     ricu_name: str,
@@ -123,8 +149,10 @@ def aggregate_dataset_concept_hourly(
     filter_to_icu_window: bool = True,
 ) -> pl.LazyFrame:
     """Load and aggregate one concept using a dataset-specific stay definition."""
-    events = scan_openicu_subject_concept_hours(
-        concept_file, numeric_scale_hours=stay_spec.numeric_time_scale_hours
+    events = scan_weavehr_subject_concept_hours(
+        concept_file,
+        numeric_scale_hours=stay_spec.numeric_time_scale_hours,
+        dataset_version=dataset_version,
     ).filter(_range_filter_expr(ricu_meta, ricu_name))
     mapped = map_subject_events_to_dataset_stays(
         events, stays, filter_to_icu_window=filter_to_icu_window
@@ -144,6 +172,7 @@ def aggregate_dataset_concept_hourly(
 def aggregate_concept_hourly(
     *,
     concept_file: str | Path,
+    dataset_version: str | None = None,
     stays: pl.LazyFrame,
     ricu_name: str,
     ricu_meta: RicuConceptMeta,
@@ -151,7 +180,9 @@ def aggregate_concept_hourly(
     filter_to_icu_window: bool = True,
 ) -> pl.LazyFrame:
     """Load, range-filter, stay-map and aggregate one dynamic concept."""
-    events = scan_openicu_concept(concept_file).filter(_range_filter_expr(ricu_meta, ricu_name))
+    events = scan_weavehr_concept(concept_file, dataset_version=dataset_version).filter(
+        _range_filter_expr(ricu_meta, ricu_name)
+    )
     mapped = map_events_to_stays(events, stays, filter_to_icu_window=filter_to_icu_window)
     aggregate = "mean"
     if aggregation_mode == "ricu":
@@ -167,14 +198,17 @@ def aggregate_concept_hourly(
 def aggregate_identity_concept_hourly(
     *,
     concept_file: str | Path,
+    dataset_version: str | None = None,
     stay_spec: DatasetStaySpec,
     ricu_name: str,
     ricu_meta: RicuConceptMeta,
     aggregation_mode: AggregationMode = "ricu",
 ) -> pl.LazyFrame:
-    """Treat OpenICU subject_id as the ICU stay ID and time as relative hours."""
-    events = scan_openicu_subject_concept_hours(
-        concept_file, numeric_scale_hours=stay_spec.numeric_time_scale_hours
+    """Treat WeavEHR subject_id as the ICU stay ID and time as relative hours."""
+    events = scan_weavehr_subject_concept_hours(
+        concept_file,
+        numeric_scale_hours=stay_spec.numeric_time_scale_hours,
+        dataset_version=dataset_version,
     ).filter(_range_filter_expr(ricu_meta, ricu_name))
     aggregate = (
         ricu_meta.aggregate_for(ricu_name, default="median")
@@ -196,6 +230,7 @@ def aggregate_identity_concept_hourly(
 def aggregate_dynamic_concept_hourly(
     *,
     concept_file: str | Path,
+    dataset_version: str | None = None,
     ricu_name: str,
     ricu_meta: RicuConceptMeta,
     aggregation_mode: AggregationMode = "ricu",
@@ -206,7 +241,7 @@ def aggregate_dynamic_concept_hourly(
     modify the induced integer ``time`` column. It expects the concept parquet
     to already contain ``stay_id``, ``time`` and ``numeric_value``.
     """
-    events = scan_openicu_dynamic_concept(concept_file).filter(
+    events = scan_weavehr_dynamic_concept(concept_file, dataset_version=dataset_version).filter(
         _range_filter_expr(ricu_meta, ricu_name)
     )
     aggregate = "mean"
@@ -279,6 +314,7 @@ def build_dynamic_table(
     concept_root: str | Path,
     icustays_csv: str | Path | None = None,
     stay_spec: DatasetStaySpec | None = None,
+    normalized_stays: pl.LazyFrame | None = None,
     ricu_concept_dict: str | Path | None = None,
     dataset: str = "mimic-iv",
     version: str | None = None,
@@ -290,8 +326,12 @@ def build_dynamic_table(
     grid_end_rounding: GridEndRounding = "floor",
     filter_to_icu_window: bool = True,
     missing_concepts: MissingConcepts = "warn",
+    dataset_version: str | None = None,
 ) -> pl.LazyFrame:
     """Build the wide YAIB/RICU-like dynamic table.
+
+    ``dataset_version`` restricts concept rows to one WeavEHR dataset version
+    when the concept outputs carry a ``dataset_version`` column.
 
     Returns a lazy frame with columns ``stay_id``, ``time`` and one column per
     successfully loaded dynamic concept abbreviation.
@@ -302,19 +342,24 @@ def build_dynamic_table(
     duplicate keys and joins concepts into the wide format.
     """
     vars_ = dynamic_vars or DYNAMIC_VARS
-    mapping = concept_mapping or RICU_TO_OPENICU
+    mapping = concept_mapping or RICU_TO_WEAVEHR
     ricu_meta = RicuConceptMeta.from_json(ricu_concept_dict)
 
-    if icustays_csv is None and include_grid:
+    if icustays_csv is None and normalized_stays is None and include_grid:
         raise ValueError(
             "include_grid=True requires a dataset ICU-stay table. "
-            "Set OPENICU_YAIB_<DATASET>_STAYS or OPENICU_YAIB_DATA_ROOT."
+            "Set WEAVEHR_YAIB_<DATASET>_STAYS or WEAVEHR_YAIB_DATA_ROOT."
         )
 
-    if icustays_csv is not None and stay_spec is not None:
+    if normalized_stays is not None:
+        stays = normalized_stays
+        dataset_stays = True
+    elif icustays_csv is not None and stay_spec is not None:
+        require_raw_stay_table_compatible(stay_spec.dataset)
         stays = scan_dataset_stays(icustays_csv, stay_spec)
         dataset_stays = True
     elif icustays_csv is not None:
+        require_raw_stay_table_compatible(dataset)
         stays = scan_mimic_icustays(icustays_csv)
         dataset_stays = False
     else:
@@ -325,23 +370,25 @@ def build_dynamic_table(
     missing: list[tuple[str, str]] = []
 
     for ricu_name in vars_:
-        openicu_name = mapping.get(ricu_name)
-        if openicu_name is None:
-            missing.append((ricu_name, "no OpenICU mapping"))
+        weavehr_name = mapping.get(ricu_name)
+        if weavehr_name is None:
+            missing.append((ricu_name, "no WeavEHR mapping"))
             continue
 
         concept_file = find_concept_file(
-            concept_root, openicu_name, dataset=dataset, version=version
+            concept_root, weavehr_name, dataset=dataset, version=version
         )
         if concept_file is None:
-            missing.append((ricu_name, f"missing parquet for OpenICU concept {openicu_name!r}"))
+            missing.append((ricu_name, f"missing parquet for WeavEHR concept {weavehr_name!r}"))
             continue
 
         if stays is None:
+            require_weavehr_stays(dataset)
             if stay_spec is not None and stay_spec.subject_is_stay:
                 concept_tables.append(
                     aggregate_identity_concept_hourly(
                         concept_file=concept_file,
+                        dataset_version=dataset_version,
                         stay_spec=stay_spec,
                         ricu_name=ricu_name,
                         ricu_meta=ricu_meta,
@@ -352,6 +399,7 @@ def build_dynamic_table(
                 concept_tables.append(
                     aggregate_dynamic_concept_hourly(
                         concept_file=concept_file,
+                        dataset_version=dataset_version,
                         ricu_name=ricu_name,
                         ricu_meta=ricu_meta,
                         aggregation_mode=aggregation_mode,
@@ -363,6 +411,7 @@ def build_dynamic_table(
                 concept_tables.append(
                     aggregate_dataset_concept_hourly(
                         concept_file=concept_file,
+                        dataset_version=dataset_version,
                         stays=stays,
                         stay_spec=stay_spec,
                         ricu_name=ricu_name,
@@ -375,6 +424,7 @@ def build_dynamic_table(
                 concept_tables.append(
                     aggregate_concept_hourly(
                         concept_file=concept_file,
+                        dataset_version=dataset_version,
                         stays=stays,
                         ricu_name=ricu_name,
                         ricu_meta=ricu_meta,
@@ -424,13 +474,79 @@ def build_dynamic_table(
     return wide.select(ordered_cols).sort("stay_id", "time")
 
 
+def resolve_build_dataset_version(
+    *,
+    concept_root: str | Path,
+    dataset: str = "mimic-iv",
+    version: str | None = None,
+    dynamic_vars: list[str] | None = None,
+    concept_mapping: dict[str, str] | None = None,
+    dataset_version: str | None = None,
+) -> DatasetVersion:
+    """Resolve the WeavEHR dataset version a dynamic-table build reads.
+
+    Uses the concept parquets the build would read and the extraction folders
+    next to ``concept_root``; several versions without ``dataset_version`` raise.
+    """
+    return resolve_weavehr_version(
+        dataset=dataset,
+        concept_files=mapped_concept_files(
+            concept_root,
+            dataset=dataset,
+            version=version,
+            dynamic_vars=dynamic_vars or DYNAMIC_VARS,
+            concept_mapping=concept_mapping or RICU_TO_WEAVEHR,
+        ),
+        workspace=Path(concept_root).expanduser().resolve().parent,
+        dataset_version=dataset_version,
+    )
+
+
 def write_dynamic_table(
     *,
     output_path: str | Path,
     **kwargs,
-) -> None:
-    """Build and write the dynamic table as parquet."""
+) -> DatasetVersion:
+    """Build and write the dynamic table as parquet with provenance.
+
+    The WeavEHR dataset version is resolved (never guessed, see
+    :func:`resolve_build_dataset_version`), used to select concept rows, checked
+    against an explicit stay table's path and recorded with the stay source in
+    ``<output>.provenance.json``.
+    """
+    dataset = kwargs.get("dataset", "mimic-iv")
+    resolved = resolve_build_dataset_version(
+        concept_root=kwargs["concept_root"],
+        dataset=dataset,
+        version=kwargs.get("version"),
+        dynamic_vars=kwargs.get("dynamic_vars"),
+        concept_mapping=kwargs.get("concept_mapping"),
+        dataset_version=kwargs.get("dataset_version"),
+    )
+    kwargs["dataset_version"] = resolved.version
+
+    stay_info: dict[str, object] = {}
+    stay_source: StaySource = "unknown"
+    if kwargs.get("normalized_stays") is None and kwargs.get("icustays_csv") is not None:
+        stay_table = resolve_dataset_stay_table(
+            dataset, explicit=kwargs["icustays_csv"], dataset_version=resolved.version
+        )
+        assert stay_table is not None
+        stay_info = stay_table.as_provenance()
+        stay_source = "raw_stay_table"
+
     lf = build_dynamic_table(**kwargs)
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    lf.sink_parquet(out)
+    sink_with_provenance(
+        lf,
+        out,
+        weavehr_provenance(
+            resolved,
+            max_hours=kwargs.get("max_hours", 168),
+            stay_source=stay_source,
+            stay_id_space=weavehr_stay_id_space(dataset, stay_source),
+            **stay_info,
+        ),
+    )
+    return resolved

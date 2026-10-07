@@ -1,4 +1,4 @@
-"""Command-line interface for building OpenICU -> YAIB dynamic tables."""
+"""Command-line interface for building WeavEHR -> YAIB dynamic tables."""
 
 from __future__ import annotations
 
@@ -13,14 +13,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Build a YAIB-compatible mortality dynamic wide table "
-            "from OpenICU concept parquets."
+            "from WeavEHR concept parquets."
         )
     )
-    parser.add_argument("--config", help="Path to openicu_yaib.yml. Preferred config-first mode.")
+    parser.add_argument("--config", help="Path to weavehr_yaib.yml. Preferred config-first mode.")
 
     # Legacy direct-argument mode kept from the converter project.
     parser.add_argument(
-        "--concept-root", help="OpenICU concept output root, e.g. workspace/concept"
+        "--concept-root", help="WeavEHR concept output root, e.g. workspace/concept"
     )
     parser.add_argument(
         "--icustays-csv",
@@ -28,7 +28,12 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--ricu-concept-dict", default=None, help="RICU concept-dict.json path")
     parser.add_argument("--dataset", default="mimic-iv")
-    parser.add_argument("--version", default="1.0.0")
+    parser.add_argument("--version", default="1.0.0", help="WeavEHR concept version")
+    parser.add_argument(
+        "--dataset-version",
+        default=None,
+        help="WeavEHR dataset version; required if the project holds several versions.",
+    )
     parser.add_argument("--aggregation-mode", choices=["mean", "ricu"], default="ricu")
     parser.add_argument("--output", help="Output parquet path")
     parser.add_argument(
@@ -49,7 +54,9 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.config:
-        write_mortality_dynamic_wide_from_config(args.config, output_path=args.output)
+        write_mortality_dynamic_wide_from_config(
+            args.config, output_path=args.output, dataset_version=args.dataset_version
+        )
         return
 
     if not args.concept_root or not args.output:
@@ -64,6 +71,7 @@ def main(argv: list[str] | None = None) -> None:
         ricu_concept_dict=Path(args.ricu_concept_dict) if args.ricu_concept_dict else None,
         dataset=args.dataset,
         version=args.version,
+        dataset_version=args.dataset_version,
         aggregation_mode=args.aggregation_mode,
         include_grid=not args.no_grid,
         max_hours=max_hours,

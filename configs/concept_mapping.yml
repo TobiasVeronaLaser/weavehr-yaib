@@ -1,4 +1,4 @@
-# YAIB/RICU dynamic variable abbreviation -> OpenICU concept name.
+# YAIB/RICU dynamic variable abbreviation -> WeavEHR concept name.
 concept_mapping:
   alb: albumin
   alp: alkaline_phosphatase

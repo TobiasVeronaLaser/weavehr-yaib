@@ -2,14 +2,14 @@ import math
 
 import polars as pl
 
-from openicu_yaib.compare import (
+from weavehr_yaib.compare import (
     per_stay_reproduction_report,
     reproduction_accuracy_summary,
 )
 
 
 def test_per_stay_reproduction_and_summary() -> None:
-    openicu = pl.DataFrame(
+    weavehr = pl.DataFrame(
         {
             "stay_id": [1, 1, 2, 2, 4],
             "time": [0, 1, 0, 1, 0],
@@ -24,7 +24,7 @@ def test_per_stay_reproduction_and_summary() -> None:
         }
     ).lazy()
 
-    per_stay = per_stay_reproduction_report(openicu, reference, ["hr"])
+    per_stay = per_stay_reproduction_report(weavehr, reference, ["hr"])
 
     stay_1 = per_stay.filter(pl.col("stay_id") == 1).row(0, named=True)
     assert stay_1["content_identical"] is True
@@ -33,11 +33,11 @@ def test_per_stay_reproduction_and_summary() -> None:
     stay_2 = per_stay.filter(pl.col("stay_id") == 2).row(0, named=True)
     assert stay_2["content_identical"] is False
     assert stay_2["n_common_rows"] == 1
-    assert stay_2["n_only_openicu_rows"] == 1
+    assert stay_2["n_only_weavehr_rows"] == 1
     assert stay_2["n_only_reference_rows"] == 1
 
     summary = reproduction_accuracy_summary(per_stay).row(0, named=True)
-    assert summary["n_stays_openicu"] == 3
+    assert summary["n_stays_weavehr"] == 3
     assert summary["n_stays_reference"] == 3
     assert summary["n_stays_common"] == 2
     assert summary["n_common_stays_identical"] == 1

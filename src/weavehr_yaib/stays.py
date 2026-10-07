@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+import polars as pl
+
 from .versions import versions_equal
 
 
@@ -397,9 +399,12 @@ def resolve_dataset_stay_table(
             best = max(matches, key=score)
             return StayTable(best.resolve(), by_version[best], "discovered")
     if seen:
+        candidates_str = sorted(
+            p.as_posix() if hasattr(p, "as_posix") else str(p).replace("\\", "/") for p in seen
+        )
         raise ValueError(
             f"No {' / '.join(spec.filenames)} for {dataset} version {dataset_version!r} found; "
-            f"candidates of other or unknown versions: {sorted(map(str, seen))}. Pass the stay "
+            f"candidates of other or unknown versions: {candidates_str}. Pass the stay "
             "table explicitly."
         )
     return None
@@ -411,3 +416,40 @@ def find_dataset_stay_file(
     """Path of :func:`resolve_dataset_stay_table`, or ``None``."""
     table = resolve_dataset_stay_table(dataset, explicit=explicit, dataset_version=dataset_version)
     return None if table is None else table.path
+
+
+def make_hourly_stay_grid(
+    stays: pl.LazyFrame,
+    *,
+    max_hours: int | None = None,
+) -> pl.LazyFrame:
+    """Construct an hourly discrete time-grid [0, end_time] for each ICU stay.
+
+    Computes length of stay as ``outtime_hours - intime_hours`` (or ``outtime - intime``)
+    and expands each stay into full integer-hour rows.
+    """
+    cols = stays.collect_schema().names()
+    intime_col = "intime_hours" if "intime_hours" in cols else "intime"
+    outtime_col = "outtime_hours" if "outtime_hours" in cols else "outtime"
+
+    normalized = stays.with_columns(
+        pl.col(intime_col).cast(pl.Float64).alias("_in"),
+        pl.col(outtime_col).cast(pl.Float64).alias("_out"),
+    )
+    los = normalized.with_columns((pl.col("_out") - pl.col("_in")).alias("los_hours"))
+    end_expr = pl.col("los_hours").floor().cast(pl.Int64)
+    if max_hours is not None:
+        end_expr = pl.min_horizontal(end_expr, pl.lit(max_hours))
+
+    return (
+        los.with_columns(
+            pl.when(pl.col("los_hours").is_null() | (pl.col("los_hours") < 0))
+            .then(0 if max_hours is None else max_hours)
+            .otherwise(end_expr)
+            .alias("end_time")
+        )
+        .select("stay_id", pl.int_ranges(0, pl.col("end_time") + 1).alias("time"))
+        .explode("time")
+        .with_columns(pl.col("time").cast(pl.Int64))
+    )
+

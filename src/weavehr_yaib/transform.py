@@ -11,6 +11,7 @@ import polars as pl
 from .concepts import DYNAMIC_VARS, RICU_TO_WEAVEHR
 from .io import (
     find_concept_file,
+    mapped_concept_files,
     scan_dataset_stays,
     scan_mimic_icustays,
     scan_weavehr_concept,
@@ -19,10 +20,18 @@ from .io import (
     stay_link_column,
 )
 from .ricu_meta import RicuConceptMeta
+from .stay_ids import StaySource, weavehr_stay_id_space
 from .stays import (
     DatasetStaySpec,
     require_raw_stay_table_compatible,
     require_weavehr_stays,
+    resolve_dataset_stay_table,
+)
+from .versions import (
+    DatasetVersion,
+    resolve_weavehr_version,
+    sink_with_provenance,
+    weavehr_provenance,
 )
 
 AggregationMode = Literal["mean", "ricu"]
@@ -465,13 +474,79 @@ def build_dynamic_table(
     return wide.select(ordered_cols).sort("stay_id", "time")
 
 
+def resolve_build_dataset_version(
+    *,
+    concept_root: str | Path,
+    dataset: str = "mimic-iv",
+    version: str | None = None,
+    dynamic_vars: list[str] | None = None,
+    concept_mapping: dict[str, str] | None = None,
+    dataset_version: str | None = None,
+) -> DatasetVersion:
+    """Resolve the WeavEHR dataset version a dynamic-table build reads.
+
+    Uses the concept parquets the build would read and the extraction folders
+    next to ``concept_root``; several versions without ``dataset_version`` raise.
+    """
+    return resolve_weavehr_version(
+        dataset=dataset,
+        concept_files=mapped_concept_files(
+            concept_root,
+            dataset=dataset,
+            version=version,
+            dynamic_vars=dynamic_vars or DYNAMIC_VARS,
+            concept_mapping=concept_mapping or RICU_TO_WEAVEHR,
+        ),
+        workspace=Path(concept_root).expanduser().resolve().parent,
+        dataset_version=dataset_version,
+    )
+
+
 def write_dynamic_table(
     *,
     output_path: str | Path,
     **kwargs,
-) -> None:
-    """Build and write the dynamic table as parquet."""
+) -> DatasetVersion:
+    """Build and write the dynamic table as parquet with provenance.
+
+    The WeavEHR dataset version is resolved (never guessed, see
+    :func:`resolve_build_dataset_version`), used to select concept rows, checked
+    against an explicit stay table's path and recorded with the stay source in
+    ``<output>.provenance.json``.
+    """
+    dataset = kwargs.get("dataset", "mimic-iv")
+    resolved = resolve_build_dataset_version(
+        concept_root=kwargs["concept_root"],
+        dataset=dataset,
+        version=kwargs.get("version"),
+        dynamic_vars=kwargs.get("dynamic_vars"),
+        concept_mapping=kwargs.get("concept_mapping"),
+        dataset_version=kwargs.get("dataset_version"),
+    )
+    kwargs["dataset_version"] = resolved.version
+
+    stay_info: dict[str, object] = {}
+    stay_source: StaySource = "unknown"
+    if kwargs.get("normalized_stays") is None and kwargs.get("icustays_csv") is not None:
+        stay_table = resolve_dataset_stay_table(
+            dataset, explicit=kwargs["icustays_csv"], dataset_version=resolved.version
+        )
+        assert stay_table is not None
+        stay_info = stay_table.as_provenance()
+        stay_source = "raw_stay_table"
+
     lf = build_dynamic_table(**kwargs)
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    lf.sink_parquet(out)
+    sink_with_provenance(
+        lf,
+        out,
+        weavehr_provenance(
+            resolved,
+            max_hours=kwargs.get("max_hours", 168),
+            stay_source=stay_source,
+            stay_id_space=weavehr_stay_id_space(dataset, stay_source),
+            **stay_info,
+        ),
+    )
+    return resolved

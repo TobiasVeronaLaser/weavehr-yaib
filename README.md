@@ -101,7 +101,25 @@ column, the rows cannot be attributed to a version (WeavEHR writes all
 versions of a dataset into one `<dataset>.parquet`) and the run fails. Add
 `dataset_version: col("version")` to the concept step `extension_columns` for
 such projects. The wide export records the resolved version in
-`<output>.provenance.json`.
+`<output>.provenance.json`. Every export that writes this file also stores a
+random `provenance_id` in the parquet metadata; a provenance file whose ID does
+not match its parquet (e.g. the parquet was overwritten by another writer) is
+rejected as stale, and writers without provenance remove an existing one. A
+provenance file built for another dataset is rejected as well.
+
+The same rules apply to the config/CLI path: set `concepts.dataset_version` in
+the config or pass `--dataset-version`.
+
+**Raw stay tables** must match the WeavEHR dataset version. An explicit table
+(`icustays_csv`/`stays_path`, `WEAVEHR_YAIB_ICUSTAYS_CSV`,
+`WEAVEHR_YAIB_<DATASET>_STAYS`) whose path names another version is rejected.
+A path names a version through its dataset folder, in the PhysioNet wget
+layout (`.../mimiciv/3.1/...`) or ZIP layout (`.../mimic-iv-3.1/...`,
+`.../eicu-collaborative-research-database-2.0/...`); version-like directories
+unrelated to the dataset (`/srv/1.0/...`) are ignored. Discovery searches all
+data roots for a table whose path names the WeavEHR version and fails when
+none or several qualify; the selected table's path, version and selection mode
+are recorded in the provenance (`stay_table_*`).
 
 **Reference version**, in this order:
 
@@ -124,9 +142,10 @@ determined, `same_version` (null if either version is unknown),
 
 | `validation_level` | When | Metrics cover |
 |---|---|---|
-| `full_same_version` | both versions verified and identical | the full comparison |
+| `full_same_version` | both versions verified and identical, stays in a common identifier space | the full comparison |
 | `shared_subset_cross_version` | both versions verified, different | shared stays × shared concepts |
 | `shared_subset_unverified_version` | a version is assumed or unknown | shared stays × shared concepts |
+| `shared_subset_stay_crosswalk` | both versions verified and identical, stays linked by a crosswalk | mapped shared stays × shared concepts |
 | `not_comparable` | no shared stays or concepts | nothing |
 
 Only `full_same_version` is full validation. A clean shared-subset result
@@ -168,7 +187,8 @@ The WeavEHR space is recorded in the wide export's provenance file. The
 - `crosswalk`: `stay_crosswalk=` (one-to-one `reference_stay_id`,
   `weavehr_stay_id`) translates reference stays into the WeavEHR space before
   any matching. Reference stays without an entry are listed as
-  `reference_without_crosswalk`. Confidence `medium`.
+  `reference_without_crosswalk`. Confidence `medium`; never full validation
+  (`shared_subset_stay_crosswalk` for verified identical versions).
 - `side_by_side_only`: different or unknown spaces. No stay-keyed report
   (windows, keys, reproduction metrics) is computed and `validation_level` is
   `not_comparable`. Provenance, the concept overlap and both stay ID sets
@@ -369,7 +389,7 @@ Notebook defaults can be overridden with environment variables:
 | `WEAVEHR_YAIB_OUTPUT_ROOT` | default output root (otherwise `~/output/weavehr_yaib`) |
 | `WEAVEHR_YAIB_ICUSTAYS_CSV` | explicit raw ICU stay table |
 | `WEAVEHR_YAIB_<DATASET>_STAYS` | dataset-specific raw ICU stay table, e.g. `WEAVEHR_YAIB_EICU_CRD_STAYS` |
-| `WEAVEHR_YAIB_DATA_ROOT` | root searched for raw stay tables (falls back to `RICU_DATA_PATH`) |
+| `WEAVEHR_YAIB_DATA_ROOT` | root searched for raw stay tables of the WeavEHR dataset version (falls back to `RICU_DATA_PATH`) |
 | `WEAVEHR_YAIB_RICU_CONCEPT_DICT` | RICU `concept-dict.json` |
 | `RICU_DYNAMIC_VARS` | comma-separated RICU variables exported by the R scripts |
 | `RICU_SOURCE_VERSION` | declared version of the RICU source data, recorded by the R export |
@@ -378,6 +398,8 @@ The config-file mode of the `weavehr-yaib` CLI uses `example/config/weavehr_yaib
 
 ```bash
 weavehr-yaib --config example/config/weavehr_yaib.yml
+# several WeavEHR dataset versions in the project:
+weavehr-yaib --config example/config/weavehr_yaib.yml --dataset-version 2.2
 ```
 
 For the RICU comparison, AUMC reference exports may use `measuredat` as their

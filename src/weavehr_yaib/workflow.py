@@ -27,7 +27,8 @@ from .compare import (
     value_diff_report,
 )
 from .concepts import DYNAMIC_VARS, RICU_TO_WEAVEHR
-from .io import find_concept_file, require_concept_column
+from .datasets import dataset_spec
+from .io import mapped_concept_files, require_concept_column
 from .stay_ids import (
     RICU_STAY_ID_SPACES,
     StayIdComparison,
@@ -36,7 +37,13 @@ from .stay_ids import (
     stay_id_version_assumption,
     weavehr_stay_id_space,
 )
-from .stays import SIC_CASE_ID_HINT, SIC_DATASETS, dataset_stay_spec, find_dataset_stay_file
+from .stays import (
+    EVENT_STAY_DATASETS,
+    SIC_CASE_ID_HINT,
+    SIC_DATASETS,
+    dataset_stay_spec,
+    resolve_dataset_stay_table,
+)
 from .transform import build_dynamic_table
 from .versions import (
     DatasetVersion,
@@ -47,8 +54,9 @@ from .versions import (
     resolve_reference_version,
     resolve_weavehr_version,
     scope_label,
+    sink_with_provenance,
     versions_equal,
-    write_weavehr_provenance,
+    weavehr_provenance,
 )
 from .workspace import weavehr_aumc_stays, weavehr_hirid_stays, weavehr_sic_stays
 
@@ -167,10 +175,12 @@ def _default_ricu_concept_dict() -> Path:
 
 
 def _default_icustays_csv(dataset: str) -> Path | None:
-    env_path = _env_path("WEAVEHR_YAIB_ICUSTAYS_CSV")
-    if env_path is not None:
-        return env_path
-    return find_dataset_stay_file(dataset)
+    """Explicitly configured stay table only.
+
+    Discovery needs the WeavEHR dataset version and therefore happens in
+    :func:`build_and_write_yaib_wide_for_dataset` after version resolution.
+    """
+    return _env_path("WEAVEHR_YAIB_ICUSTAYS_CSV")
 
 
 def default_dataset_paths(
@@ -267,11 +277,14 @@ def build_and_write_yaib_wide(
     filter_to_icu_window: bool = True,
     include_grid: bool | None = None,
     dataset_version: str | None = None,
+    provenance: dict[str, object] | None = None,
 ) -> WideExportResult:
     """Build and write YAIB/RICU-style dynamic wide parquet from WeavEHR concepts.
 
     ``dataset_version`` keeps only concept rows of that WeavEHR dataset version
     (requires the ``dataset_version`` concept column to have an effect).
+    ``provenance`` is written as the ID-linked ``.provenance.json`` sidecar;
+    without it any existing sidecar of ``output_path`` is removed.
 
     This is the cleaned-up version of the archive notebooks
     ``01_openicu_to_yaib_dyn.ipynb`` and ``01_openicu_to_yaib_dyn_all.ipynb``.
@@ -306,7 +319,8 @@ def build_and_write_yaib_wide(
         missing_concepts=missing_concepts,  # type: ignore[arg-type]
         dataset_version=dataset_version,
     )
-    lf.sink_parquet(out)
+    # This writer cannot vouch for provenance unless given; never leave a stale one.
+    sink_with_provenance(lf, out, provenance)
 
     summary = (
         scan_dyn(out)
@@ -371,10 +385,11 @@ def build_and_write_yaib_wide_for_dataset(
     spec = dataset_stay_spec(dataset)
 
     normalized_stays = None
-    resolved_icustays = paths.icustays_csv
+    resolved_icustays: Path | None = None
+    stay_info: dict[str, object] = {}
 
     workspace = paths.concept_root.parent
-    concept_files = _mapped_concept_files(
+    concept_files = mapped_concept_files(
         paths.concept_root,
         dataset=paths.dataset,
         version=version,
@@ -388,9 +403,19 @@ def build_and_write_yaib_wide_for_dataset(
         dataset_version=dataset_version,
     )
 
-    # Without an explicit stay table, HiRID and AUMC stay windows are rebuilt
-    # from the WeavEHR extraction events next to the concept directory.
-    stay_source: StaySource = "raw_stay_table" if resolved_icustays is not None else "unknown"
+    # Without an explicit stay table, HiRID, AUMC and SIC stay windows are
+    # rebuilt from the WeavEHR extraction events next to the concept directory.
+    # Other datasets use a raw stay table of the same dataset version.
+    stay_source: StaySource = "unknown"
+    if not (icustays_csv is None and dataset.lower() in EVENT_STAY_DATASETS):
+        stay_table = resolve_dataset_stay_table(
+            paths.dataset, explicit=paths.icustays_csv, dataset_version=weavehr_version.version
+        )
+        if stay_table is not None:
+            resolved_icustays = stay_table.path
+            stay_info = stay_table.as_provenance()
+            stay_source = "raw_stay_table"
+
     if dataset.lower() == "hirid" and icustays_csv is None:
         normalized_stays = weavehr_hirid_stays(workspace, version=weavehr_version.version)
         resolved_icustays = None
@@ -426,37 +451,17 @@ def build_and_write_yaib_wide_for_dataset(
         filter_to_icu_window=filter_to_icu_window,
         include_grid=include_grid,
         dataset_version=weavehr_version.version,
-    )
-    write_weavehr_provenance(
-        result.output_path,
-        weavehr_version,
-        max_hours=max_hours,
-        stay_source=stay_source,
-        stay_id_space=weavehr_stay_id_space(paths.dataset, stay_source),
+        provenance=weavehr_provenance(
+            weavehr_version,
+            max_hours=max_hours,
+            stay_source=stay_source,
+            stay_id_space=weavehr_stay_id_space(paths.dataset, stay_source),
+            **stay_info,
+        ),
     )
     return WideExportResult(
         output_path=result.output_path, summary=result.summary, dataset_version=weavehr_version
     )
-
-
-def _mapped_concept_files(
-    concept_root: Path,
-    *,
-    dataset: str,
-    version: str | None,
-    dynamic_vars: list[str],
-    concept_mapping: dict[str, str],
-) -> list[Path]:
-    """Concept parquets that the dynamic-table build will read."""
-    files = []
-    for ricu_name in dynamic_vars:
-        weavehr_name = concept_mapping.get(ricu_name)
-        if weavehr_name is None:
-            continue
-        path = find_concept_file(concept_root, weavehr_name, dataset=dataset, version=version)
-        if path is not None:
-            files.append(path)
-    return files
 
 
 def stay_windows_from_wide(df: pl.DataFrame | pl.LazyFrame, *, prefix: str) -> pl.DataFrame:
@@ -647,6 +652,15 @@ def _key_counts(weavehr: pl.DataFrame, reference: pl.DataFrame) -> tuple[int, in
     return w.height, r.height, w.join(r, on=["stay_id", "time"], how="inner").height
 
 
+def full_comparison_scope(versions: VersionComparison, stay_ids: StayIdComparison) -> bool:
+    """Full comparison needs verified identical versions and a common stay ID space.
+
+    A stay crosswalk only links the stays it covers, so such comparisons are
+    restricted to the mapped (shared) stays instead.
+    """
+    return versions.full_scope and stay_ids.basis == "direct_identifier_match"
+
+
 def _scope_tables(
     *,
     versions: VersionComparison,
@@ -671,7 +685,7 @@ def _scope_tables(
     shared_stays = weavehr_stays & reference_stays if matchable else set()
     shared_concepts = weavehr_concepts & reference_concepts
     comparable = matchable and bool(shared_stays) and bool(shared_concepts)
-    full = versions.full_scope
+    full = full_comparison_scope(versions, stay_ids)
 
     def overlap_row(
         dimension: str, n_w: int, n_r: int, n_s: int, *, matched: bool = True
@@ -736,7 +750,11 @@ def _scope_tables(
         stay_confidence = "medium"
     scope: dict[str, object] = {
         "comparison_scope": "full" if full else "shared_subset",
-        "validation_level": versions.validation_level(comparable=comparable),
+        "validation_level": (
+            "shared_subset_stay_crosswalk"
+            if comparable and versions.full_scope and not full
+            else versions.validation_level(comparable=comparable)
+        ),
         "metrics_restricted_to_shared_scope": not full,
         **stay_ids.as_dict(),
         "stay_comparison_confidence": stay_confidence,
@@ -870,7 +888,8 @@ def compare_weavehr_wide_to_ricu(
         reference_path=reference_path,
     )
 
-    if versions.full_scope:
+    full_scope = full_comparison_scope(versions, stay_ids)
+    if full_scope:
         metric_vars = vars_
         metric_stays = valid_metric_stays
     else:
@@ -894,7 +913,7 @@ def compare_weavehr_wide_to_ricu(
         how="semi",
     )
 
-    if not versions.full_scope:
+    if not full_scope:
         keep = ["stay_id", "time", *metric_vars]
         weavehr_metric = weavehr_metric.select([c for c in keep if c in weavehr_metric.columns])
         reference_metric = reference_metric.select(
@@ -1023,12 +1042,22 @@ def default_stay_ids(
     the RICU source comes from ``ricu_source`` or the RICU export's provenance
     file. Unknown spaces are never assumed to be equal.
     """
-    source = ricu_source or read_provenance_field(ricu_dynamic_path, "ricu_source")
+    # RICU sidecars come from the R export and carry no WeavEHR provenance_id.
+    source = ricu_source or read_provenance_field(
+        ricu_dynamic_path, "ricu_source", verified=False
+    )
     return StayIdComparison(
         weavehr_space=read_provenance_field(weavehr_wide_path, "stay_id_space"),
         reference_space=RICU_STAY_ID_SPACES.get(str(source)) if source else None,
         crosswalk=load_stay_crosswalk(stay_crosswalk) if stay_crosswalk is not None else None,
     )
+
+
+def _canonical_dataset(name: str) -> str:
+    try:
+        return dataset_spec(name).name
+    except ValueError:
+        return name.lower()
 
 
 def resolve_comparison_versions(
@@ -1043,11 +1072,18 @@ def resolve_comparison_versions(
 
     The WeavEHR version comes from the wide export's provenance file (written by
     :func:`build_and_write_yaib_wide_for_dataset`), else from an explicit
-    ``dataset_version``, else it is unknown. A ``dataset_version`` that
-    contradicts the provenance file raises: the export would have to be rebuilt.
+    ``dataset_version``, else it is unknown. A ``dataset_version`` or ``dataset``
+    that contradicts the provenance file raises (the export would have to be
+    rebuilt), as does a provenance file that does not belong to the parquet
+    (:class:`~weavehr_yaib.versions.StaleProvenanceError`).
     """
     weavehr = read_weavehr_provenance(weavehr_wide_path)
     if weavehr is not None:
+        if _canonical_dataset(weavehr.dataset) != _canonical_dataset(dataset):
+            raise ValueError(
+                f"{weavehr_wide_path} was built for WeavEHR dataset {weavehr.dataset!r}, "
+                f"not {dataset!r}."
+            )
         if dataset_version is not None and not versions_equal(weavehr.version, dataset_version):
             raise ValueError(
                 f"{weavehr_wide_path} was built from WeavEHR {dataset} version "

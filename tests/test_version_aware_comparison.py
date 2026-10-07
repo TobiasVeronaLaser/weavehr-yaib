@@ -13,7 +13,12 @@ from weavehr_yaib.stay_ids import (
     load_stay_crosswalk,
     weavehr_stay_id_space,
 )
-from weavehr_yaib.versions import DatasetVersion, VersionComparison, write_weavehr_provenance
+from weavehr_yaib.versions import (
+    DatasetVersion,
+    StaleProvenanceError,
+    VersionComparison,
+    write_weavehr_provenance,
+)
 from weavehr_yaib.workflow import (
     compare_weavehr_wide_to_ricu,
     compare_weavehr_wide_to_ricu_for_dataset,
@@ -319,6 +324,11 @@ def test_stay_crosswalk_translates_reference_stays(files: dict[str, Path]) -> No
     assert provenance["stay_comparison_basis"] == "crosswalk"
     assert provenance["stay_comparison_confidence"] == "medium"
     assert provenance["stay_id_version_assumption"] == "crosswalk"
+    # Same verified version, but a crosswalk only links the stays it covers:
+    # never full validation, metrics only on the mapped stays.
+    assert provenance["validation_level"] == "shared_subset_stay_crosswalk"
+    assert provenance["comparison_scope"] == "shared_subset"
+    assert _row(result.reproduction_accuracy)["n_stays_reference"] == 2
     assert provenance["n_scope_shared_stays"] == 2
     assert provenance["n_scope_reference_stays_without_crosswalk"] == 1
     assert ("stay", "3", "reference_without_crosswalk") in set(result.scope_differences.iter_rows())
@@ -344,3 +354,47 @@ def test_declared_stay_id_spaces() -> None:
     assert weavehr_stay_id_space("mimic-iii", "raw_stay_table") != RICU_STAY_ID_SPACES["miiv"]
     assert weavehr_stay_id_space("hirid", "weavehr_hirid_events") == RICU_STAY_ID_SPACES["hirid"]
     assert weavehr_stay_id_space("mimic-iv", "unknown") is None
+
+
+def test_low_level_compare_reads_ricu_provenance_without_provenance_id(
+    files: dict[str, Path],
+) -> None:
+    """The R export's sidecar has no WeavEHR provenance_id and must still be read."""
+    files["reference"].with_suffix(".provenance.json").write_text(
+        json.dumps(
+            {
+                "reference": "ricu",
+                "ricu_source": "miiv",
+                "ricu_package_version": "0.6.3",
+                "source_url": "https://physionet.org/files/mimiciv/2.2",
+                "source_version_from_url": "2.2",
+                "source_version_declared": None,
+            }
+        )
+    )
+
+    result = compare_weavehr_wide_to_ricu(
+        weavehr_wide_path=files["wide"],
+        ricu_dynamic_path=files["reference"],
+        ricu_stay_windows_path=files["windows"],
+        dynamic_vars=VARS,
+    )
+
+    # ricu_source "miiv" was read from the sidecar and mapped to RICU's stay space.
+    assert _row(result.provenance)["reference_stay_id_space"] == MIIV_STAY_SPACE
+
+
+def test_low_level_compare_still_rejects_unlinked_weavehr_provenance(
+    files: dict[str, Path],
+) -> None:
+    """WeavEHR sidecars keep requiring the provenance_id stored in the parquet."""
+    files["wide"].with_suffix(".provenance.json").write_text(
+        json.dumps({"stay_id_space": MIIV_STAY_SPACE})
+    )
+    with pytest.raises(StaleProvenanceError):
+        compare_weavehr_wide_to_ricu(
+            weavehr_wide_path=files["wide"],
+            ricu_dynamic_path=files["reference"],
+            ricu_stay_windows_path=files["windows"],
+            dynamic_vars=VARS,
+        )

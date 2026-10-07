@@ -12,6 +12,7 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
+from uuid import uuid4
 
 import polars as pl
 
@@ -27,12 +28,17 @@ __all__ = [
     "concept_dataset_versions",
     "extracted_dataset_versions",
     "filter_dataset_version",
+    "PROVENANCE_ID_KEY",
+    "StaleProvenanceError",
     "read_provenance_field",
+    "read_weavehr_provenance_data",
     "read_weavehr_provenance",
     "resolve_reference_version",
     "resolve_weavehr_version",
     "scope_label",
+    "sink_with_provenance",
     "versions_equal",
+    "weavehr_provenance",
     "write_weavehr_provenance",
 ]
 
@@ -58,6 +64,9 @@ ValidationLevel = Literal[
     "full_same_version",
     "shared_subset_cross_version",
     "shared_subset_unverified_version",
+    # Same verified version, but stays are linked through a crosswalk rather
+    # than a common identifier space: only the mapped stays are compared.
+    "shared_subset_stay_crosswalk",
     "not_comparable",
 ]
 
@@ -311,28 +320,93 @@ def provenance_path(data_path: str | Path) -> Path:
     return Path(data_path).with_suffix(".provenance.json")
 
 
+# Parquet key-value metadata linking an export to its provenance sidecar.
+PROVENANCE_ID_KEY = "weavehr_yaib.provenance_id"
+
+
+class StaleProvenanceError(ValueError):
+    """A provenance sidecar does not belong to the parquet next to it."""
+
+
+def sink_with_provenance(
+    lf: pl.LazyFrame, data_path: str | Path, provenance: dict[str, object] | None
+) -> None:
+    """Write ``lf`` and, if given, its provenance sidecar with a shared ID.
+
+    Any existing sidecar is removed first, so a writer without provenance never
+    leaves a sidecar that describes earlier data.
+    """
+    data_path = Path(data_path)
+    sidecar = provenance_path(data_path)
+    sidecar.unlink(missing_ok=True)
+    if provenance is None:
+        lf.sink_parquet(data_path)
+        return
+    provenance_id = uuid4().hex
+    lf.sink_parquet(data_path, metadata={PROVENANCE_ID_KEY: provenance_id})
+    sidecar.write_text(
+        json.dumps({**provenance, "provenance_id": provenance_id}, indent=2, default=str)
+    )
+
+
+def weavehr_provenance(version: DatasetVersion, **extra: object) -> dict[str, object]:
+    return {**asdict(version), **extra}
+
+
 def write_weavehr_provenance(
     data_path: str | Path, version: DatasetVersion, **extra: object
 ) -> Path:
-    path = provenance_path(data_path)
-    path.write_text(json.dumps({**asdict(version), **extra}, indent=2, default=str))
-    return path
+    """Attach provenance to an existing parquet (rewrites it with the shared ID)."""
+    data_path = Path(data_path)
+    sink_with_provenance(
+        pl.read_parquet(data_path).lazy(), data_path, weavehr_provenance(version, **extra)
+    )
+    return provenance_path(data_path)
 
 
-def read_provenance_field(data_path: str | Path, key: str) -> str | None:
-    """One value from a ``.provenance.json`` sidecar, or ``None``."""
-    path = provenance_path(data_path)
-    if not path.is_file():
+def read_weavehr_provenance_data(data_path: str | Path) -> dict | None:
+    """The verified provenance of a WeavEHR export, or ``None`` without sidecar.
+
+    Raises :class:`StaleProvenanceError` when the sidecar's ID does not match
+    the parquet's metadata: it then describes other (earlier) data.
+    """
+    sidecar = provenance_path(data_path)
+    if not sidecar.is_file():
         return None
-    value = json.loads(path.read_text()).get(key)
+    data = json.loads(sidecar.read_text())
+    expected = data.get("provenance_id")
+    actual = (
+        pl.read_parquet_metadata(data_path).get(PROVENANCE_ID_KEY)
+        if Path(data_path).is_file()
+        else None
+    )
+    if expected is None or actual != expected:
+        raise StaleProvenanceError(
+            f"{sidecar} does not belong to {data_path} (stale or mismatched provenance). "
+            "Rebuild the export or remove the provenance file."
+        )
+    return data
+
+
+def read_provenance_field(data_path: str | Path, key: str, *, verified: bool = True) -> str | None:
+    """One value from a ``.provenance.json`` sidecar, or ``None``.
+
+    ``verified=True`` (WeavEHR exports) checks that the sidecar belongs to the
+    parquet; reference sidecars written by the R export carry no such ID.
+    """
+    if verified:
+        data = read_weavehr_provenance_data(data_path)
+    else:
+        sidecar = provenance_path(data_path)
+        data = json.loads(sidecar.read_text()) if sidecar.is_file() else None
+    value = None if data is None else data.get(key)
     return None if value is None else str(value)
 
 
 def read_weavehr_provenance(data_path: str | Path) -> DatasetVersion | None:
-    path = provenance_path(data_path)
-    if not path.is_file():
+    data = read_weavehr_provenance_data(data_path)
+    if data is None:
         return None
-    data = json.loads(path.read_text())
     return DatasetVersion(
         dataset=data["dataset"],
         version=data["version"],

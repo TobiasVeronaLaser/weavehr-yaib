@@ -23,7 +23,7 @@ from typing import Literal
 import polars as pl
 
 from .concepts import DYNAMIC_VARS, RICU_TO_WEAVEHR
-from .io import filter_dataset_version, find_concept_file
+from .io import filter_dataset_version, find_concept_file, mapped_concept_files
 from .versions import (
     VersionComparison,
     relationship_from_counts,
@@ -31,7 +31,7 @@ from .versions import (
     resolve_weavehr_version,
     scope_label,
 )
-from .workflow import _mapped_concept_files, dataset_ricu_code, default_dataset_paths
+from .workflow import dataset_ricu_code, default_dataset_paths
 
 ComparisonBasis = Literal["direct_identifier_match", "crosswalk", "side_by_side_only"]
 ComparisonConfidence = Literal["high", "medium", "not_comparable"]
@@ -608,7 +608,7 @@ def write_item_review_for_dataset(
     mapping = concept_mapping or RICU_TO_WEAVEHR
     weavehr = resolve_weavehr_version(
         dataset=paths.dataset,
-        concept_files=_mapped_concept_files(
+        concept_files=mapped_concept_files(
             paths.concept_root,
             dataset=paths.dataset,
             version=concept_version,

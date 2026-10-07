@@ -7,7 +7,7 @@ from pathlib import Path
 import polars as pl
 
 from .config import WeavEHRYAIBConfig, load_config
-from .transform import build_dynamic_table, write_dynamic_table
+from .transform import build_dynamic_table, resolve_build_dataset_version, write_dynamic_table
 
 
 def build_mortality_dynamic_wide(config: WeavEHRYAIBConfig) -> pl.LazyFrame:
@@ -20,6 +20,14 @@ def build_mortality_dynamic_wide(config: WeavEHRYAIBConfig) -> pl.LazyFrame:
     # Unit conversion is intentionally not applied here yet because the imported
     # converter consumed WeavEHR numeric_value directly. The loaded unit_mapping
     # is kept in the config as an explicit extension point for follow-up work.
+    dataset_version = resolve_build_dataset_version(
+        concept_root=config.concept_root,
+        dataset=config.dataset,
+        version=config.version,
+        dynamic_vars=config.dynamic_vars,
+        concept_mapping=config.concept_mapping,
+        dataset_version=config.dataset_version,
+    ).version
     return build_dynamic_table(
         concept_root=config.concept_root,
         icustays_csv=config.icustays_csv,
@@ -34,6 +42,7 @@ def build_mortality_dynamic_wide(config: WeavEHRYAIBConfig) -> pl.LazyFrame:
         grid_end_rounding=config.grid_end_rounding,  # type: ignore[arg-type]
         filter_to_icu_window=config.filter_to_icu_window,
         missing_concepts=config.missing_concepts,  # type: ignore[arg-type]
+        dataset_version=dataset_version,
     )
 
 
@@ -45,8 +54,12 @@ def build_mortality_dynamic_wide_from_config(config_path: str | Path) -> pl.Lazy
 def write_mortality_dynamic_wide_from_config(
     config_path: str | Path,
     output_path: str | Path | None = None,
+    dataset_version: str | None = None,
 ) -> Path:
-    """Load config, build the table and write it to parquet."""
+    """Load config, build the table and write it with provenance to parquet.
+
+    ``dataset_version`` overrides ``concepts.dataset_version`` of the config.
+    """
     config = load_config(config_path)
     out = Path(output_path) if output_path is not None else config.output_path
     if out is None:
@@ -66,6 +79,7 @@ def write_mortality_dynamic_wide_from_config(
         grid_end_rounding=config.grid_end_rounding,  # type: ignore[arg-type]
         filter_to_icu_window=config.filter_to_icu_window,
         missing_concepts=config.missing_concepts,  # type: ignore[arg-type]
+        dataset_version=dataset_version or config.dataset_version,
     )
     return out
 

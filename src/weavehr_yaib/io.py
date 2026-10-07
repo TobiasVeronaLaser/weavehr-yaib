@@ -81,6 +81,27 @@ def find_concept_file(
     return None
 
 
+def mapped_concept_files(
+    concept_root: str | Path,
+    *,
+    dataset: str,
+    version: str | None,
+    dynamic_vars: list[str],
+    concept_mapping: dict[str, str],
+) -> list[Path]:
+    """Concept parquets that the dynamic-table build will read."""
+    files = []
+    for ricu_name in dynamic_vars:
+        weavehr_name = concept_mapping.get(ricu_name)
+        if weavehr_name is None:
+            continue
+        path = find_concept_file(concept_root, weavehr_name, dataset=dataset, version=version)
+        if path is not None:
+            files.append(path)
+    return files
+
+
+
 def scan_weavehr_concept(path: str | Path, *, dataset_version: str | None = None) -> pl.LazyFrame:
     """Scan a WeavEHR MEDS-like subject-level concept parquet.
 

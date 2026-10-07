@@ -289,3 +289,34 @@ def test_sic_raw_cases_are_not_joined_to_patient_ids(tmp_path: Path) -> None:
             dataset="sic",
             dynamic_vars=["hr"],
         )
+
+
+def test_hirid_all_concepts_use_event_stays_not_absolute_hours(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without a raw general table, HiRID hours are relative to ICU_ADMISSION."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    for name in ("RICU_DATA_PATH", "WEAVEHR_YAIB_DATA_ROOT", "WEAVEHR_YAIB_HIRID_STAYS"):
+        monkeypatch.delenv(name, raising=False)
+    project = _project(tmp_path)
+    base = project / "workspace/extraction/hirid/1.1.1"
+    _write(base / "general/ICU_ADMISSION.parquet", _events([7], [datetime(2150, 1, 1)]))
+    _write(
+        base / "observations/OBSERVATION.parquet",
+        _events([7], [datetime(2150, 1, 1, 10)]),
+    )
+    _write(
+        project / "workspace/concept/heart_rate/1.0.0/hirid.parquet",
+        _events(
+            [7],
+            [datetime(2150, 1, 1, 2, 30)],
+            numeric_value=pl.Series([80.0], dtype=pl.Float32),
+        ),
+    )
+
+    result = write_all_concepts_wide(dataset="hirid", weavehr_output=project, max_hours=None)
+    assert _hr_by_key(result.output_path, "heart_rate") == {(7, 2): 80.0}
+
+    # Without stays the subject-as-stay fallback with absolute hours is refused.
+    with pytest.raises(ValueError, match="absolute timestamps"):
+        build_all_concepts_wide(dataset="hirid", concept_root=concept_root_from_output(project))

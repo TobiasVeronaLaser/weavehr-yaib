@@ -17,6 +17,7 @@ from .io import (
     stay_link_column,
 )
 from .ricu_meta import RicuConceptMeta
+from .stay_ids import StaySource, weavehr_stay_id_space
 from .stays import (
     SIC_CASE_ID_HINT,
     SIC_DATASETS,
@@ -24,12 +25,19 @@ from .stays import (
     find_dataset_stay_file,
     require_raw_stay_table_compatible,
     require_weavehr_stays,
+    resolve_dataset_stay_table,
 )
-from .versions import DatasetVersion, resolve_weavehr_version, write_weavehr_provenance
+from .versions import (
+    DatasetVersion,
+    resolve_weavehr_version,
+    sink_with_provenance,
+    weavehr_provenance,
+)
 from .workspace import (
     concept_root_from_output,
     resolve_weavehr_workspace,
     weavehr_aumc_stays,
+    weavehr_hirid_stays,
     weavehr_sic_stays,
     yaib_root_from_output,
 )
@@ -245,10 +253,8 @@ def build_all_concepts_wide(
     if normalized_stays is not None:
         stays = normalized_stays
     else:
-        resolved_stays = (
-            Path(stays_path).expanduser().resolve()
-            if stays_path
-            else find_dataset_stay_file(dataset)
+        resolved_stays = find_dataset_stay_file(
+            dataset, explicit=stays_path or None, dataset_version=dataset_version
         )
         if resolved_stays is not None:
             require_raw_stay_table_compatible(spec.dataset)
@@ -336,14 +342,31 @@ def write_all_concepts_wide(
         dataset_version=dataset_version,
     )
 
+    # Event-based stays for AUMC, HiRID and SIC; otherwise a raw stay table of
+    # the same dataset version (or none).
     normalized_stays = None
+    stay_source: StaySource = "unknown"
+    stay_info: dict[str, object] = {}
     if dataset.lower() == "aumc" and stays_path is None:
         normalized_stays = weavehr_aumc_stays(workspace, version=version.version)
-    if dataset.lower() in SIC_DATASETS and stays_path is None:
+        stay_source = "weavehr_visit_events"
+    elif dataset.lower() == "hirid" and stays_path is None:
+        normalized_stays = weavehr_hirid_stays(workspace, version=version.version)
+        stay_source = "weavehr_hirid_events"
+    elif dataset.lower() in SIC_DATASETS and stays_path is None:
         require_concept_column(
             [x.path for x in discover_dataset_concepts(croot, dataset)], "case_id", SIC_CASE_ID_HINT
         )
         normalized_stays = weavehr_sic_stays(workspace, version=version.version)
+        stay_source = "weavehr_sic_cases_events"
+    else:
+        stay_table = resolve_dataset_stay_table(
+            dataset, explicit=stays_path, dataset_version=version.version
+        )
+        if stay_table is not None:
+            stays_path = stay_table.path
+            stay_info = stay_table.as_provenance()
+            stay_source = "raw_stay_table"
 
     wide, concepts = build_all_concepts_wide(
         dataset=dataset,
@@ -355,8 +378,17 @@ def write_all_concepts_wide(
         ricu_concept_dict=ricu_concept_dict,
         dataset_version=version.version,
     )
-    wide.sink_parquet(out)
-    write_weavehr_provenance(out, version, max_hours=max_hours)
+    sink_with_provenance(
+        wide,
+        out,
+        weavehr_provenance(
+            version,
+            max_hours=max_hours,
+            stay_source=stay_source,
+            stay_id_space=weavehr_stay_id_space(dataset, stay_source),
+            **stay_info,
+        ),
+    )
     pl.DataFrame(
         {
             "concept": [x.name for x in concepts],

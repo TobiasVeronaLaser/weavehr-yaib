@@ -3,12 +3,12 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openicu-yaib"
+name = "weavehr-yaib"
 version = "0.1.0"
-description = "Convert OpenICU concept outputs to YAIB-wide tables and validate against RICU."
-authors = [{ name = "OpenICU contributors" }]
+description = "Convert WeavEHR concept outputs to YAIB-wide tables and validate against RICU."
+authors = [{ name = "WeavEHR contributors" }]
 license = { file = "LICENSE" }
-keywords = ["OpenICU", "YAIB", "RICU", "ICU", "MIMIC-IV", "critical-care"]
+keywords = ["WeavEHR", "YAIB", "RICU", "ICU", "MIMIC-IV", "critical-care"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -35,8 +35,8 @@ dev = [
 ]
 
 [project.scripts]
-openicu-yaib = "openicu_yaib.cli:main"
-openicu-yaib-dyn = "openicu_yaib.cli:main"
+weavehr-yaib = "weavehr_yaib.cli:main"
+weavehr-yaib-dyn = "weavehr_yaib.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

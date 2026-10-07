@@ -1,4 +1,4 @@
-"""Input helpers for OpenICU concept parquets and MIMIC-IV ICU stays."""
+"""Input helpers for WeavEHR concept parquets and MIMIC-IV ICU stays."""
 
 from __future__ import annotations
 
@@ -6,15 +6,48 @@ from pathlib import Path
 
 import polars as pl
 
+# Optional concept-output column holding the WeavEHR dataset version, added via
+# the concept step's ``extension_columns: {dataset_version: col("version")}``.
+DATASET_VERSION_COLUMN = "dataset_version"
+
+
+# Concept-event columns linking an event to its exact stay, by dataset:
+# AUMC OMOP visit_occurrence_id, SICdb CaseID (WeavEHR extension ``case_id``).
+# They are only present if the concept step keeps them in ``extension_columns``.
+STAY_LINK_COLUMNS = ("visit_occurrence_id", "case_id")
+
+
+def require_concept_column(concept_files: list[Path], column: str, hint: str) -> None:
+    """Fail if any concept parquet lacks ``column``."""
+    for path in concept_files:
+        if column not in pl.scan_parquet(path).collect_schema().names():
+            raise ValueError(f"{path} has no {column!r} column.\n{hint}")
+
+
+def stay_link_column(names: list[str]) -> str | None:
+    """The stay-link column present in a concept-event schema, if any."""
+    return next((c for c in STAY_LINK_COLUMNS if c in names), None)
+
+
+def filter_dataset_version(lf: pl.LazyFrame, dataset_version: str | None) -> pl.LazyFrame:
+    """Keep rows of one dataset version when the concept output records it.
+
+    Without the column the version was resolved from the project layout, which
+    guarantees a single version, so there is nothing to filter.
+    """
+    if dataset_version is None or DATASET_VERSION_COLUMN not in lf.collect_schema().names():
+        return lf
+    return lf.filter(pl.col(DATASET_VERSION_COLUMN).cast(pl.String) == dataset_version)
+
 
 def find_concept_file(
     concept_root: str | Path,
-    openicu_concept: str,
+    weavehr_concept: str,
     *,
     dataset: str = "mimic-iv",
     version: str | None = None,
 ) -> Path | None:
-    """Find one OpenICU concept parquet.
+    """Find one WeavEHR concept parquet.
 
     Expected common layout:
         <concept_root>/<concept>/<version>/<dataset>.parquet
@@ -23,7 +56,7 @@ def find_concept_file(
     below the concept folder.
     """
     root = Path(concept_root)
-    concept_dir = root / openicu_concept
+    concept_dir = root / weavehr_concept
     candidates: list[Path] = []
 
     if version is not None:
@@ -48,13 +81,13 @@ def find_concept_file(
     return None
 
 
-def scan_openicu_concept(path: str | Path) -> pl.LazyFrame:
-    """Scan an OpenICU MEDS-like subject-level concept parquet.
+def scan_weavehr_concept(path: str | Path, *, dataset_version: str | None = None) -> pl.LazyFrame:
+    """Scan a WeavEHR MEDS-like subject-level concept parquet.
 
     Required columns after normalization:
         subject_id, time, numeric_value
     """
-    lf = pl.scan_parquet(path)
+    lf = filter_dataset_version(pl.scan_parquet(path), dataset_version)
     schema = lf.collect_schema()
     required = {"subject_id", "time", "numeric_value"}
     missing = sorted(required - set(schema.names()))
@@ -69,8 +102,10 @@ def scan_openicu_concept(path: str | Path) -> pl.LazyFrame:
     )
 
 
-def scan_openicu_dynamic_concept(path: str | Path) -> pl.LazyFrame:
-    """Scan an already stay/time-indexed OpenICU dynamic concept parquet.
+def scan_weavehr_dynamic_concept(
+    path: str | Path, *, dataset_version: str | None = None
+) -> pl.LazyFrame:
+    """Scan an already stay/time-indexed WeavEHR dynamic concept parquet.
 
     This is the minimal presentation path: the input concept parquet already
     contains the YAIB-style key columns ``stay_id`` and induced integer ``time``.
@@ -79,7 +114,7 @@ def scan_openicu_dynamic_concept(path: str | Path) -> pl.LazyFrame:
     Required columns after normalization:
         stay_id, time, numeric_value
     """
-    lf = pl.scan_parquet(path)
+    lf = filter_dataset_version(pl.scan_parquet(path), dataset_version)
     schema = lf.collect_schema()
     required = {"stay_id", "time", "numeric_value"}
     missing = sorted(required - set(schema.names()))
@@ -136,11 +171,16 @@ def _time_as_hours(expr: pl.Expr, dtype: pl.DataType, numeric_scale_hours: float
     return expr.cast(pl.Float64) * numeric_scale_hours
 
 
-def scan_openicu_aumc_stays(
+def scan_weavehr_aumc_stays(
     visit_start_path: str | Path,
     visit_end_path: str | Path,
 ) -> pl.LazyFrame:
-    """Build normalized AUMC ICU stays from OpenICU visit events."""
+    """Build normalized AUMC ICU stays from WeavEHR visit events.
+
+    WeavEHR extracts AUMC through the inherited OMOP ``visit_occurrence`` table;
+    ``VISIT_START``/``VISIT_END`` carry ``visit_occurrence_id`` as an extension
+    column, which becomes the stay ID.
+    """
     start = pl.scan_parquet(visit_start_path).select(
         [
             pl.col("subject_id").cast(pl.Int64),
@@ -168,7 +208,7 @@ def scan_openicu_aumc_stays(
 
 
 
-def scan_openicu_hirid_stays(
+def scan_weavehr_hirid_stays(
     admission_path: str | Path,
     observations_path: str | Path,
 ) -> pl.LazyFrame:
@@ -209,6 +249,43 @@ def scan_openicu_hirid_stays(
     )
 
 
+def scan_weavehr_sic_stays(
+    admission_path: str | Path,
+    observations_path: str | Path,
+) -> pl.LazyFrame:
+    """Build SIC ICU stays (one per case) from WeavEHR ``cases`` events.
+
+    WeavEHR places all SICdb events of a patient on one synthetic axis,
+    ``Jan 1 of the first admission year + OffsetAfterFirstAdmission + Offset``
+    (seconds), and emits ``ICU_ADMISSION`` at ``Offset`` 0 of each case, with
+    ``case_id`` (SICdb ``CaseID``) as extension. The stay is the case: it starts
+    at its ``ICU_ADMISSION`` event and ends at its latest ``OBSERVATION``
+    (``data_float_h``) event, because WeavEHR does not extract ``TimeOfStay``.
+    Both times are on the same axis as the concept events.
+    """
+
+    def epoch_hours(expr: pl.Expr) -> pl.Expr:
+        return expr.dt.epoch("ms").cast(pl.Float64) / 3_600_000.0
+
+    admission = (
+        pl.scan_parquet(admission_path)
+        .select(
+            pl.col("subject_id").cast(pl.Int64),
+            pl.col("case_id").cast(pl.Int64).alias("stay_id"),
+            epoch_hours(pl.col("time")).alias("intime_hours"),
+        )
+        .unique(subset=["stay_id"])
+    )
+    observation_end = (
+        pl.scan_parquet(observations_path)
+        .group_by(pl.col("case_id").cast(pl.Int64).alias("stay_id"))
+        .agg(epoch_hours(pl.col("time").max()).alias("outtime_hours"))
+    )
+    return admission.join(observation_end, on="stay_id", how="left").select(
+        "subject_id", "stay_id", "intime_hours", "outtime_hours"
+    )
+
+
 def scan_dataset_stays(path: str | Path, spec) -> pl.LazyFrame:
     """Read a dataset-specific raw ICU-stay table into normalized hour units."""
     path = Path(path)
@@ -227,13 +304,13 @@ def scan_dataset_stays(path: str | Path, spec) -> pl.LazyFrame:
         pl.col(stay).cast(pl.Int64).alias("stay_id"),
     ]
 
-    # OpenICU places eICU events on a synthetic datetime axis:
+    # WeavEHR places eICU events on a synthetic datetime axis:
     #
     #   hospital discharge year, January 1 at hospital admission time
     #   - hospitaladmitoffset
     #
     # Because eICU offsets are relative to ICU admission, this reconstructs
-    # exactly the admission_timestamp used by the OpenICU eICU configs.
+    # exactly the admission_timestamp used by the WeavEHR eICU configs.
     if spec.dataset in {"eicu", "eicu_demo", "eicu-crd", "eicu-demo"}:
         year = _column_name_case_insensitive(names, "hospitaldischargeyear")
         hospital_time = _column_name_case_insensitive(names, "hospitaladmittime24")
@@ -289,11 +366,17 @@ def scan_dataset_stays(path: str | Path, spec) -> pl.LazyFrame:
     return lf.select(cols)
 
 
-def scan_openicu_subject_concept_hours(
-    path: str | Path, numeric_scale_hours: float = 1.0
+def scan_weavehr_subject_concept_hours(
+    path: str | Path, numeric_scale_hours: float = 1.0, *, dataset_version: str | None = None
 ) -> pl.LazyFrame:
-    """Read subject-level OpenICU events and normalize time to numeric hours."""
-    lf = pl.scan_parquet(path)
+    """Read subject-level WeavEHR events and normalize time to numeric hours.
+
+    Stay-link columns (``visit_occurrence_id`` for AUMC, ``case_id`` for SIC)
+    are kept when present so events can be mapped to the exact stay. WeavEHR
+    concept outputs only contain them if the concept step lists them under
+    ``extension_columns``, and writes them as strings, hence the cast to Int64.
+    """
+    lf = filter_dataset_version(pl.scan_parquet(path), dataset_version)
     schema = lf.collect_schema()
     required = {"subject_id", "time", "numeric_value"}
     missing = sorted(required - set(schema.names()))
@@ -304,7 +387,8 @@ def scan_openicu_subject_concept_hours(
         _time_as_hours(pl.col("time"), schema["time"], numeric_scale_hours).alias("time_hours"),
         pl.col("numeric_value").cast(pl.Float64),
     ]
-    if "visit_occurrence_id" in schema.names():
-        columns.append(pl.col("visit_occurrence_id").cast(pl.Int64))
+    for link in STAY_LINK_COLUMNS:
+        if link in schema.names():
+            columns.append(pl.col(link).cast(pl.Int64))
 
     return lf.select(columns)

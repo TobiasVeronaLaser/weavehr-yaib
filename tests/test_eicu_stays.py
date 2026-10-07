@@ -3,15 +3,15 @@ from pathlib import Path
 
 import polars as pl
 
-from openicu_yaib.io import scan_dataset_stays, scan_openicu_aumc_stays
-from openicu_yaib.stays import dataset_stay_spec
-from openicu_yaib.workflow import (
+from weavehr_yaib.io import scan_dataset_stays, scan_weavehr_aumc_stays
+from weavehr_yaib.stays import dataset_stay_spec
+from weavehr_yaib.workflow import (
     normalize_ricu_dynamic_reference,
     read_ricu_stay_windows,
 )
 
 
-def test_eicu_stay_reconstructs_openicu_synthetic_timeline(
+def test_eicu_stay_reconstructs_weavehr_synthetic_timeline(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "patient.csv"
@@ -85,7 +85,7 @@ def test_eicu_ricu_dynamic_normalizes_keys(tmp_path: Path) -> None:
     result = normalize_ricu_dynamic_reference(
         reference_dynamic_path=path,
         ricu_windows=windows,
-        openicu_columns=["stay_id", "time", "hr"],
+        weavehr_columns=["stay_id", "time", "hr"],
     )
 
     assert result.columns == ["stay_id", "time", "hr"]
@@ -117,7 +117,7 @@ def test_aumc_ricu_dynamic_uses_measuredat_as_time(tmp_path: Path) -> None:
     result = normalize_ricu_dynamic_reference(
         reference_dynamic_path=path,
         ricu_windows=windows,
-        openicu_columns=["stay_id", "time", "hr"],
+        weavehr_columns=["stay_id", "time", "hr"],
     )
 
     assert result.columns == ["stay_id", "time", "hr"]
@@ -149,7 +149,7 @@ def test_aumc_stay_maps_patientid_to_subject_and_admissionid_to_stay(
     assert result["stay_id"].to_list() == [12544]
 
 
-def test_aumc_openicu_visit_events_build_stay_windows(tmp_path: Path) -> None:
+def test_aumc_weavehr_visit_events_build_stay_windows(tmp_path: Path) -> None:
     start_path = tmp_path / "VISIT_START.parquet"
     end_path = tmp_path / "VISIT_END.parquet"
 
@@ -169,7 +169,7 @@ def test_aumc_openicu_visit_events_build_stay_windows(tmp_path: Path) -> None:
         }
     ).write_parquet(end_path)
 
-    result = scan_openicu_aumc_stays(start_path, end_path).collect()
+    result = scan_weavehr_aumc_stays(start_path, end_path).collect()
 
     assert result["subject_id"].to_list() == [10825]
     assert result["stay_id"].to_list() == [12544]

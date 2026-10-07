@@ -122,7 +122,7 @@ _SPECS = {
     ),
     # NWICU is not a native RICU source; RICU metadata may still be used
     # independently for YAIB aggregation semantics.
-    # Without a raw stay table, OpenICU subject_id is treated as the ICU stay ID.
+    # Without a raw stay table, WeavEHR subject_id is treated as the ICU stay ID.
     "nwicu": DatasetStaySpec("nwicu", (), "subject_id", "subject_id", None, None, 1.0, True),
 }
 
@@ -134,12 +134,68 @@ def dataset_stay_spec(dataset: str) -> DatasetStaySpec:
     return _SPECS[key]
 
 
+# Datasets whose WeavEHR concept outputs use other subject/stay identifier spaces
+# than the native raw stay table, so the two must not be joined by equal numbers.
+_RAW_STAY_TABLE_INCOMPATIBLE = {
+    "aumc": (
+        "WeavEHR reads AUMC through the AMSTEL OMOP export: its concept events carry OMOP "
+        "person_id and visit_occurrence_id, while the native AmsterdamUMCdb admissions table "
+        "uses patientid and admissionid. No verified crosswalk links these identifier spaces, "
+        "so they are not joined by equal numbers. Omit the stay table (icustays_csv/stays_path, "
+        "WEAVEHR_YAIB_AUMC_STAYS, WEAVEHR_YAIB_DATA_ROOT) to derive stays from the WeavEHR "
+        "VISIT_START/VISIT_END extraction events instead."
+    ),
+}
+_SIC_RAW_STAY_TABLE_REASON = (
+    "WeavEHR uses the SICdb PatientID as subject_id (CaseID only as the case_id extension) and "
+    "places events on a per-patient synthetic datetime axis, while the raw cases table spec "
+    "uses CaseID as subject and stay ID with case-relative ICUOffset/TimeOfStay. Joining them "
+    "would match PatientID to CaseID by equal numbers. Omit the stay table to build one stay "
+    "per case from the WeavEHR cases events (requires case_id on the concept events)."
+)
+_RAW_STAY_TABLE_INCOMPATIBLE["sic"] = _SIC_RAW_STAY_TABLE_REASON
+_RAW_STAY_TABLE_INCOMPATIBLE["sicdb"] = _SIC_RAW_STAY_TABLE_REASON
+
+
+SIC_DATASETS = frozenset({"sic", "sicdb"})
+
+SIC_CASE_ID_HINT = (
+    "SIC concept events must carry the SICdb CaseID to be assigned to the right ICU stay "
+    "(a patient can have several cases). Keep it via the WeavEHR concept step config:\n"
+    "  mapping_configs:\n"
+    "    - name: sic\n"
+    "      version: <version>\n"
+    "      extension_columns:\n"
+    '        case_id: col("case_id")'
+)
+
+
+def require_weavehr_stays(dataset: str) -> None:
+    """Fail where a dataset's WeavEHR subject_id would be used as stay ID.
+
+    SIC's WeavEHR subject_id is the PatientID, not a stay: stays must be built
+    from the WeavEHR cases events (``weavehr_sic_stays``).
+    """
+    if dataset.lower() in SIC_DATASETS:
+        raise ValueError(
+            "WeavEHR SIC subject_id is the SICdb PatientID, not an ICU stay ID. Build SIC stays "
+            "from the WeavEHR cases events (weavehr_sic_stays / normalized_stays=) instead."
+        )
+
+
+def require_raw_stay_table_compatible(dataset: str) -> None:
+    """Fail if a raw stay table cannot be joined to WeavEHR concept events."""
+    reason = _RAW_STAY_TABLE_INCOMPATIBLE.get(dataset.lower())
+    if reason is not None:
+        raise ValueError(f"Cannot map WeavEHR {dataset} concepts onto a raw stay table. {reason}")
+
+
 def find_dataset_stay_file(dataset: str, explicit: str | Path | None = None) -> Path | None:
     """Resolve a raw ICU-stay table without requiring notebook code changes."""
     if explicit is not None:
         return Path(explicit).expanduser().resolve()
 
-    env_specific = os.getenv(f"OPENICU_YAIB_{dataset.upper().replace('-', '_')}_STAYS")
+    env_specific = os.getenv(f"WEAVEHR_YAIB_{dataset.upper().replace('-', '_')}_STAYS")
     if env_specific:
         return Path(env_specific).expanduser().resolve()
 
@@ -148,7 +204,7 @@ def find_dataset_stay_file(dataset: str, explicit: str | Path | None = None) -> 
         return None
 
     roots = []
-    for name in ("OPENICU_YAIB_DATA_ROOT", "RICU_DATA_PATH"):
+    for name in ("WEAVEHR_YAIB_DATA_ROOT", "RICU_DATA_PATH"):
         value = os.getenv(name)
         if value:
             roots.append(Path(value).expanduser())

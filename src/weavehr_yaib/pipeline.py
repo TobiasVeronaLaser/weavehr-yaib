@@ -1,4 +1,4 @@
-"""High-level pipelines for OpenICU -> YAIB mortality dynamic output."""
+"""High-level pipelines for WeavEHR -> YAIB mortality dynamic output."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from pathlib import Path
 
 import polars as pl
 
-from .config import OpenICUYAIBConfig, load_config
+from .config import WeavEHRYAIBConfig, load_config
 from .transform import build_dynamic_table, write_dynamic_table
 
 
-def build_mortality_dynamic_wide(config: OpenICUYAIBConfig) -> pl.LazyFrame:
+def build_mortality_dynamic_wide(config: WeavEHRYAIBConfig) -> pl.LazyFrame:
     """Build the YAIB mortality dynamic wide table from a resolved config.
 
     The mortality use case is defined by ``config.dynamic_vars``. The resulting
@@ -18,7 +18,7 @@ def build_mortality_dynamic_wide(config: OpenICUYAIBConfig) -> pl.LazyFrame:
     per configured dynamic variable that could be loaded.
     """
     # Unit conversion is intentionally not applied here yet because the imported
-    # converter consumed OpenICU numeric_value directly. The loaded unit_mapping
+    # converter consumed WeavEHR numeric_value directly. The loaded unit_mapping
     # is kept in the config as an explicit extension point for follow-up work.
     return build_dynamic_table(
         concept_root=config.concept_root,

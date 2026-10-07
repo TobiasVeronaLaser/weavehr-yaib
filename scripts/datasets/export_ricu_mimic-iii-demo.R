@@ -1,6 +1,8 @@
 #!/usr/bin/env Rscript
 
-# RICU 7-day validation export for OpenICU dataset mimic-iii-demo.
+# RICU 7-day validation export for WeavEHR dataset mimic-iii-demo.
+# Current WeavEHR bundles no mimic-iii-demo dataset configs; the WeavEHR side of this
+# comparison requires custom WeavEHR dataset configs.
 Sys.setenv(RICU_SRC = "mimic_demo")
 
 script_dir <- file.path(getwd(), "scripts")

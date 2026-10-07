@@ -1,4 +1,4 @@
-"""Validation helpers for OpenICU -> YAIB/RICU dynamic tables."""
+"""Validation helpers for WeavEHR -> YAIB/RICU dynamic tables."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from typing import Any
 
 import polars as pl
 
-from .concepts import DYNAMIC_VARS, RICU_TO_OPENICU
-from .io import find_concept_file, scan_mimic_icustays, scan_openicu_concept
+from .concepts import DYNAMIC_VARS, RICU_TO_WEAVEHR
+from .io import find_concept_file, scan_mimic_icustays, scan_weavehr_concept
 from .ricu_meta import RicuConceptMeta
 from .transform import map_events_to_stays
 
@@ -206,18 +206,18 @@ def debug_concept_against_output(
     aggregate: str = "mean",
     filter_to_icu_window: bool = True,
 ) -> dict[str, Any]:
-    """Trace one concept from raw OpenICU parquet to final wide output."""
-    mapping = concept_mapping or RICU_TO_OPENICU
+    """Trace one concept from raw WeavEHR parquet to final wide output."""
+    mapping = concept_mapping or RICU_TO_WEAVEHR
     if concept not in mapping:
-        raise KeyError(f"No OpenICU concept mapping available for {concept!r}.")
-    openicu_concept = mapping[concept]
+        raise KeyError(f"No WeavEHR concept mapping available for {concept!r}.")
+    weavehr_concept = mapping[concept]
     concept_file = find_concept_file(
-        concept_root, openicu_concept, dataset=dataset, version=version
+        concept_root, weavehr_concept, dataset=dataset, version=version
     )
     if concept_file is None:
-        raise FileNotFoundError(f"Could not find parquet for {concept!r} / {openicu_concept!r}.")
+        raise FileNotFoundError(f"Could not find parquet for {concept!r} / {weavehr_concept!r}.")
 
-    raw = scan_openicu_concept(concept_file)
+    raw = scan_weavehr_concept(concept_file)
     stays = scan_mimic_icustays(icustays_csv)
     filtered = raw.filter(_range_filter_expr(ricu_meta, concept))
     mapped = map_events_to_stays(filtered, stays, filter_to_icu_window=filter_to_icu_window)
@@ -250,7 +250,7 @@ def debug_concept_against_output(
 
     return {
         "concept": concept,
-        "openicu_concept": openicu_concept,
+        "weavehr_concept": weavehr_concept,
         "concept_file": str(concept_file),
         "raw_summary": raw.select(
             [

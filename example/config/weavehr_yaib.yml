@@ -1,10 +1,10 @@
-# Example config for converting OpenICU concept parquets to a YAIB-compatible
+# Example config for converting WeavEHR concept parquets to a YAIB-compatible
 # mortality dynamic wide table.
 
 concepts:
-  # Root folder containing OpenICU concept parquet outputs, commonly:
+  # Root folder containing WeavEHR concept parquet outputs, commonly:
   # <concept_root>/<concept>/<version>/<dataset>.parquet
-  path: /path/to/openicu/workspace/concept
+  path: /path/to/weavehr/project/workspace/concept
   dataset: mimic-iv
   version: 1.0.0
 

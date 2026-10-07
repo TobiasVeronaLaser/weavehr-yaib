@@ -1,4 +1,4 @@
-"""Command-line interface for building OpenICU -> YAIB dynamic tables."""
+"""Command-line interface for building WeavEHR -> YAIB dynamic tables."""
 
 from __future__ import annotations
 
@@ -13,14 +13,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Build a YAIB-compatible mortality dynamic wide table "
-            "from OpenICU concept parquets."
+            "from WeavEHR concept parquets."
         )
     )
-    parser.add_argument("--config", help="Path to openicu_yaib.yml. Preferred config-first mode.")
+    parser.add_argument("--config", help="Path to weavehr_yaib.yml. Preferred config-first mode.")
 
     # Legacy direct-argument mode kept from the converter project.
     parser.add_argument(
-        "--concept-root", help="OpenICU concept output root, e.g. workspace/concept"
+        "--concept-root", help="WeavEHR concept output root, e.g. workspace/concept"
     )
     parser.add_argument(
         "--icustays-csv",

@@ -2,7 +2,7 @@ import datetime as dt
 
 import polars as pl
 
-from openicu_yaib.transform import (
+from weavehr_yaib.transform import (
     map_events_to_stays,
     map_subject_events_to_dataset_stays,
 )

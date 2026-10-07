@@ -4,11 +4,11 @@
 #
 # Defaults:
 #   RICU_SRC        = miiv
-#   RICU_OUT_DIR    = ~/output/openicu_yaib
+#   RICU_OUT_DIR    = ~/output/weavehr_yaib
 #   RICU_WINDOW_OUT = ${RICU_OUT_DIR}/ricu_stay_windows_${RICU_SRC}.parquet
 #
 # Example:
-#   RICU_OUT_DIR="$HOME/output/openicu_yaib" Rscript scripts/export_ricu_stay_windows.R
+#   RICU_OUT_DIR="$HOME/output/weavehr_yaib" Rscript scripts/export_ricu_stay_windows.R
 
 suppressPackageStartupMessages({
   library(ricu)
@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
 src <- Sys.getenv("RICU_SRC", unset = "miiv")
 out_dir <- Sys.getenv(
   "RICU_OUT_DIR",
-  unset = file.path(Sys.getenv("HOME"), "output", "openicu_yaib")
+  unset = file.path(Sys.getenv("HOME"), "output", "weavehr_yaib")
 )
 out <- Sys.getenv(
   "RICU_WINDOW_OUT",

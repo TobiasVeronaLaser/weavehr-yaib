@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# RICU 7-day validation export for OpenICU dataset eicu-crd.
+# RICU 7-day validation export for WeavEHR dataset eicu-crd.
 Sys.setenv(RICU_SRC = "eicu")
 
 script_dir <- file.path(getwd(), "scripts")

@@ -1,4 +1,4 @@
-"""YAIB dynamic variable list and RICU abbreviation -> OpenICU concept mapping."""
+"""YAIB dynamic variable list and RICU abbreviation -> WeavEHR concept mapping."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ DYNAMIC_VARS: list[str] = [
     "wbc",
 ]
 
-RICU_TO_OPENICU: dict[str, str] = {
+RICU_TO_WEAVEHR: dict[str, str] = {
     "alb": "albumin",
     "alp": "alkaline_phosphatase",
     "alt": "alanine_aminotransferase",

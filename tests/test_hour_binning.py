@@ -9,11 +9,15 @@ from weavehr_yaib.transform import (
 
 
 def test_dataset_relative_hours_use_floor_bins() -> None:
+    time_hours = [10.00, 10.49, 10.50, 10.99, 11.00, 11.49, 11.99, 12.00]
+
+    # A unique numeric_value identifies each event: the join in
+    # map_subject_events_to_dataset_stays() does not guarantee row order.
     events = pl.DataFrame(
         {
-            "subject_id": [1] * 8,
-            "time_hours": [10.00, 10.49, 10.50, 10.99, 11.00, 11.49, 11.99, 12.00],
-            "numeric_value": [1.0] * 8,
+            "subject_id": [1] * len(time_hours),
+            "time_hours": time_hours,
+            "numeric_value": [float(i) for i in range(len(time_hours))],
         }
     ).lazy()
 
@@ -26,15 +30,13 @@ def test_dataset_relative_hours_use_floor_bins() -> None:
         }
     ).lazy()
 
-    result = (
-        map_subject_events_to_dataset_stays(events, stays)
-        .select("time")
-        .collect()
-        .get_column("time")
-        .to_list()
-    )
+    result = map_subject_events_to_dataset_stays(events, stays).sort("numeric_value").collect()
 
-    assert result == [0, 0, 0, 0, 1, 1, 1, 2]
+    # Event i at time_hours[i] must land in floor(time_hours[i] - intime_hours).
+    assert result.get_column("numeric_value").to_list() == [
+        float(i) for i in range(len(time_hours))
+    ]
+    assert result.get_column("time").to_list() == [0, 0, 0, 0, 1, 1, 1, 2]
 
 
 def test_datetime_relative_hours_use_floor_bins() -> None:
@@ -42,11 +44,13 @@ def test_datetime_relative_hours_use_floor_bins() -> None:
 
     offsets_minutes = [0, 29, 30, 59, 60, 89, 119, 120]
 
+    # A unique numeric_value identifies each event: the join in
+    # map_events_to_stays() does not guarantee row order.
     events = pl.DataFrame(
         {
             "subject_id": [1] * len(offsets_minutes),
             "time": [intime + dt.timedelta(minutes=x) for x in offsets_minutes],
-            "numeric_value": [1.0] * len(offsets_minutes),
+            "numeric_value": [float(i) for i in range(len(offsets_minutes))],
         }
     ).lazy()
 
@@ -59,11 +63,13 @@ def test_datetime_relative_hours_use_floor_bins() -> None:
         }
     ).lazy()
 
-    result = (
-        map_events_to_stays(events, stays).select("time").collect().get_column("time").to_list()
-    )
+    result = map_events_to_stays(events, stays).sort("numeric_value").collect()
 
-    assert result == [0, 0, 0, 0, 1, 1, 1, 2]
+    # Event i at offsets_minutes[i] must land in floor(offset / 60).
+    assert result.get_column("numeric_value").to_list() == [
+        float(i) for i in range(len(offsets_minutes))
+    ]
+    assert result.get_column("time").to_list() == [0, 0, 0, 0, 1, 1, 1, 2]
 
 
 def test_dataset_stay_mapping_prefers_visit_occurrence_id() -> None:

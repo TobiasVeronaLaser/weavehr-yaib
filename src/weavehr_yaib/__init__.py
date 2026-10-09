@@ -8,6 +8,11 @@ from .all_concepts import (
 )
 from .concepts import DYNAMIC_VARS, RICU_TO_WEAVEHR
 from .config import WeavEHRYAIBConfig, load_config
+from .dataset_concept_validation import (
+    build_dataset_concept_validation,
+    read_comparison_evidence,
+    write_dataset_concept_validation,
+)
 from .datasets import DATASETS, DatasetSpec, dataset_spec
 from .item_review import (
     REVIEW_VERDICTS,
@@ -108,4 +113,7 @@ __all__ = [
     "build_item_review",
     "write_item_review",
     "write_item_review_for_dataset",
+    "build_dataset_concept_validation",
+    "read_comparison_evidence",
+    "write_dataset_concept_validation",
 ]

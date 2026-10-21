@@ -1,0 +1,38 @@
+ricu_concept,concept_id,item_label,raw_rows,semantic_visit_rows,raw_to_semantic_ratio,multiplicity
+alb,3024561,Alb.Chem (bloed)//g/l; Albumine chemisch//g/l,214136,107068,2.0,2x/2ids:107068
+fgn,3016407,Fibrinogeen  (bloed)//g/l; Fibrinogeen (bloed)//g/l,8376,4188,2.0,2x/2ids:4188
+inr_pt,3032080,Prothrombinetijd  (bloed)//INR; Prothrombinetijd (bloed)//INR,387380,193690,2.0,2x/2ids:193690
+mcv,3023599,M.C.V.//fl; MCV (bloed)//fl,16364,8182,2.0,2x/2ids:8182
+urine,21491173,Nefrodrain li Uit//ml; Nefrodrain re Uit//ml,15124,7562,2.0,2x/2ids:7562
+urine,3007123,UrineSpontaan//ml,29366,14683,2.0,2x/2ids:14683
+urine,3014315,UrineCAD//ml; UrineIncontinentie//ml; UrineSplint Li//ml; UrineSplint Re//ml; UrineSupraPubis//ml; UrineUP//ml,3319256,1659628,2.0,2x/2ids:1659628
+urine,3016267,Spoelblaas Uit//ml,1290,645,2.0,2x/2ids:645
+alb,3028286,ALB.FR. (bloed)//Geen; Alb-Fr (bloed)//g/l; Albumine (imm.) (bloed)//g/l,355,207,1.714975845410628,1x/1ids:59 ; 2x/2ids:148
+cai,3048816,CA++(7.4) Astrup//mmol/l; CA++(7.4)//mmol/l; Ca-ion (7.4) (bloed)//mmol/l,493726,493726,1.0,1x/1ids:493726
+ckmb,3005785,MB-Massa (bloed)//µg/l,61329,61329,1.0,1x/1ids:61329
+cl,3014576,Chloor (bloed)//mmol/l; Chloor//mmol/l,180102,180102,1.0,1x/1ids:180102
+cl,3018572,Chloor Astrup//mmol/l; Cl (onv.ISE) (bloed)//mmol/l,346818,346818,1.0,1x/1ids:346818
+dbp,21490851,ABP diastolisch II//mmHg; ABP diastolisch//mmHg; PiCCO APd//mmHg,33402500,33402500,1.0,1x/1ids:33402500
+dbp,21492240,Niet invasieve bloeddruk diastolisch//mmHg,190431,190431,1.0,1x/1ids:190431
+fio2,3020716,O2 Volume(2)//None; O2 Volume//None,85391,85391,1.0,1x/1ids:85391
+fio2,3025408,O2 concentratie//Geen; Zephyros O2i//Geen,15645447,15645447,1.0,1x/1ids:15645447
+hr,3027018,IABP HF///min; PiCCO HF Hartfrequentie///min,87880,87880,1.0,1x/1ids:87880
+lymph,3002030,Lymfocyten % (bloed)//Geen; Lymfocyten//None,4654,4654,1.0,1x/1ids:4654
+map,21490852,ABP gemiddeld II//mmHg; ABP gemiddeld//mmHg; PiCCO APm//mmHg,33412768,33412768,1.0,1x/1ids:33412768
+map,21492241,Niet invasieve bloeddruk gemiddeld//mmHg,190760,190760,1.0,1x/1ids:190760
+mch,40762531,M.C.H.//None; MCH (bloed)//amol,8099,8099,1.0,1x/1ids:8099
+mchc,40762530,M.C.H.C.//mmol/l; MCHC (bloed)-LabZis2//mmol/cel; MCHC (bloed)//mmol/cel,8010,8010,1.0,1x/1ids:8010
+methb,3007930,FMetHb//None; Met-Hb  (bloed)//Geen; Met-Hb (bloed)//Geen,336872,336872,1.0,1x/1ids:336872
+o2sat,42869608,O2-Saturatie (bloed)//Geen; SO2 (Hb) (bloed)//Geen; SO2//None,677492,677492,1.0,1x/1ids:677492
+plt,3007461,Thrombo's (bloed)//10^9/l; Thrombo's citr. bloed (bloed)//10^9/l; Thrombocyten//10^9/l,221713,221713,1.0,1x/1ids:221713
+ptt,3013466,APTT  (bloed)//sec; APTT (bloed)//sec; CEF-KAOL.T (bloed)//sec; Cephalinetyd//sec,204872,204872,1.0,1x/1ids:204872
+resp,3007646,Ademfreq.(2)///min; Ademfreq.///min; Ademfrequentie Evita//None; Rate (Bipap Vision)///min; Zephyros Frequentie///min,15699470,15699470,1.0,1x/1ids:15699470
+resp,3026892,Ademfreq. Spontaan nieuw///min; Ademfrequentie Spontaan(2)//None; Ademfrequentie Spontaan//None; Frequentie Spontaan//None,45182,45182,1.0,1x/1ids:45182
+sbp,21490853,ABP systolisch II//mmHg; ABP systolisch//mmHg; PiCCO APs//mmHg,33402861,33402861,1.0,1x/1ids:33402861
+sbp,21492239,Niet invasieve bloeddruk systolisch//mmHg,192123,192123,1.0,1x/1ids:192123
+temp,21490586,PiCCO Tb blood temperature//°C; Temp Bloed//°C,2004487,2004487,1.0,1x/1ids:2004487
+temp,3006322,Temp Oraal//°C,546,546,1.0,1x/1ids:546
+temp,3022060,Temp Rectaal//°C,387259,387259,1.0,1x/1ids:387259
+temp,3025085,Temp Axillair//°C,202198,202198,1.0,1x/1ids:202198
+temp,3025163,Temp Oor//°C,52540,52540,1.0,1x/1ids:52540
+tnt,3048529,Troponine//ng/ml,617,617,1.0,1x/1ids:617

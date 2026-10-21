@@ -1,0 +1,102 @@
+ricu_concept,item_id,item_label,item_table,n_rows
+alb,6801,Albumine chemisch,numericitems,3064
+alb,9937,Alb.Chem (bloed),numericitems,104004
+alp,6803,Alk. Fosfatase,numericitems,1971
+alp,11984,Alk.Fosf. (bloed),numericitems,59711
+alt,6800,ALAT,numericitems,2185
+alt,11978,ALAT (bloed),numericitems,77264
+ast,6806,ASAT,numericitems,2187
+ast,11990,ASAT (bloed),numericitems,76229
+be,6807,B.E.,numericitems,25210
+be,9994,B.E. (bloed),numericitems,654665
+bicar,6810,HCO3,numericitems,25251
+bicar,9992,Act.HCO3 (bloed),numericitems,657442
+bili,6813,Bili Totaal,numericitems,1720
+bili,9945,Bilirubine (bloed),numericitems,57386
+bili_dir,6812,Bilirubine geconjugeerd,numericitems,375
+bnd,6796,Staafkernig,numericitems,7
+bnd,11586,Staaf % (bloed),numericitems,1905
+bun,6850,Ureum,numericitems,3138
+bun,9943,Ureum (bloed),numericitems,107581
+ca,6817,Calcium,numericitems,5339
+ca,9933,Calcium totaal (bloed),numericitems,140461
+cai,6815,Ca. geioniseerd,numericitems,2
+cai,8915,CA++(7.4),numericitems,38
+cai,9560,Ca++ Astrup,numericitems,16774
+cai,9561,CA++(7.4) Astrup,numericitems,13584
+cai,10267,Ca-ion (7.4) (bloed),numericitems,480104
+ck,6822,CK,numericitems,4355
+ck,11998,CK (bloed),numericitems,107983
+ckmb,6824,CK-MB,numericitems,2315
+cl,9930,Chloor (bloed),numericitems,178659
+crea,6836,Kreatinine,numericitems,6481
+crea,9941,Kreatinine (bloed),numericitems,196186
+crea,14216,KREAT enzym. (bloed),numericitems,33
+crp,6825,CRP,numericitems,399
+crp,10079,CRP (bloed),numericitems,82347
+dbp,6643,ABP diastolisch,numericitems,33343274
+fgn,6776,Fibrinogeen,numericitems,35
+fgn,9989,Fibrinogeen (bloed),numericitems,1444
+fgn,10175,Fibrinogeen  (bloed),numericitems,2744
+fio2,12279,O2 concentratie,numericitems,15645395
+glu,6833,Glucose Bloed,numericitems,7892
+glu,9557,Glucose Astrup,numericitems,20195
+glu,9947,Glucose (bloed),numericitems,820898
+hgb,6778,Hemoglobine,numericitems,7603
+hgb,9553,CtHB Astrup,numericitems,21409
+hgb,9960,Hb (bloed),numericitems,216027
+hgb,10286,Hb(v.Bgs) (bloed),numericitems,493874
+hgb,19703,Hb poct (bloed),numericitems,8
+hr,6640,Hartfrequentie,numericitems,37732398
+inr_pt,11893,Prothrombinetijd (bloed),numericitems,66847
+k,6835,Kalium,numericitems,8612
+k,9556,Kalium Astrup,numericitems,20082
+k,9927,Kalium (bloed),numericitems,220787
+k,10285,K (onv.ISE) (bloed),numericitems,542007
+lact,6837,Laktaat,numericitems,1476
+lact,9580,Laktaat Astrup,numericitems,917
+lact,10053,Lactaat (bloed),numericitems,182155
+lymph,11846,Lymfocyten % (bloed),numericitems,4606
+lymph,14258,Lymfocyten (bloed),numericitems,11647
+map,6642,ABP gemiddeld,numericitems,33352770
+mch,11679,MCH (bloed),numericitems,7959
+mchc,18666,MCHC (bloed),numericitems,2686
+mcv,9968,MCV (bloed),numericitems,8041
+methb,11692,Met-Hb (bloed),numericitems,2714
+mg,6839,Magnesium,numericitems,4633
+mg,9952,Magnesium (bloed),numericitems,127345
+na,6840,Natrium,numericitems,8602
+na,9555,Natrium Astrup,numericitems,19785
+na,9924,Natrium (bloed),numericitems,226219
+na,10284,Na (onv.ISE) (bloed),numericitems,527724
+neut,6786,Neutrofielen,numericitems,40
+neut,11856,Neutro's % app (bloed),numericitems,2805
+neut,14254,Neutro's app (bloed),numericitems,9382
+o2sat,6709,Saturatie (Monitor),numericitems,36411768
+o2sat,8903,SO2,numericitems,24404
+o2sat,12311,O2-Saturatie (bloed),numericitems,652901
+pco2,6846,PCO2,numericitems,25348
+pco2,9990,pCO2 (bloed),numericitems,659807
+pco2,21213,PCO2 (bloed) - kPa,numericitems,9464
+ph,6848,PH,numericitems,25371
+ph,12310,pH (bloed),numericitems,659777
+phos,6828,Fosfaat,numericitems,5212
+phos,9935,Fosfaat (bloed),numericitems,139031
+plt,6797,Thrombocyten,numericitems,7201
+plt,9964,Thrombo's (bloed),numericitems,214452
+plt,10409,Thrombo's citr. bloed (bloed),numericitems,60
+plt,14252,Thrombo CD61 (bloed),numericitems,393
+po2,7433,PO2,numericitems,25372
+po2,9996,PO2 (bloed),numericitems,654417
+po2,21214,PO2 (bloed) - kPa,numericitems,9392
+ptt,17982,APTT (bloed),numericitems,68230
+resp,8874,Ademfrequentie Monitor,numericitems,25776086
+resp,12266,Ademfreq.,numericitems,15613362
+sbp,6641,ABP systolisch,numericitems,33343613
+temp,8658,Temp Bloed,numericitems,1999754
+temp,13952,Temp Blaas,numericitems,927689
+temp,16110,Temp Oesophagus,numericitems,833973
+tnt,10407,TroponineT (bloed),numericitems,23805
+urine,8794,UrineCAD,numericitems,1632547
+wbc,6779,Leucocyten,numericitems,6474
+wbc,9965,Leuco's (bloed),numericitems,191174

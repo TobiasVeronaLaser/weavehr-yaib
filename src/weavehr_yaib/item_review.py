@@ -128,10 +128,11 @@ def load_crosswalk(crosswalk: str | Path | pl.DataFrame | None) -> dict[str, set
 
 def load_reference_observed_items(
     observed: str | Path | pl.DataFrame | None,
-) -> dict[str, dict[str, int | None]] | None:
+) -> dict[str, dict[str, dict[str, object]]] | None:
     """Items actually present in reference data, per RICU concept.
 
-    Expects columns ``ricu_concept`` and ``item_id`` (optional ``n_rows``).
+    Expects columns ``ricu_concept`` and ``item_id``. Optional columns:
+    ``n_rows``, ``item_label`` and ``item_table``.
     ``None`` means reference data occurrence is unknown.
     """
     if observed is None:
@@ -140,12 +141,34 @@ def load_reference_observed_items(
     missing = {"ricu_concept", "item_id"} - set(df.columns)
     if missing:
         raise ValueError(f"Reference observed items are missing columns: {sorted(missing)}")
-    n_rows = pl.col("n_rows").cast(pl.Int64) if "n_rows" in df.columns else pl.lit(None)
-    result: dict[str, dict[str, int | None]] = {}
-    for concept, item_id, n in df.select(
-        pl.col("ricu_concept").cast(pl.String), pl.col("item_id").cast(pl.String), n_rows
-    ).iter_rows():
-        result.setdefault(concept, {})[item_id] = n
+
+    exprs = [
+        pl.col("ricu_concept").cast(pl.String),
+        pl.col("item_id").cast(pl.String),
+        (
+            pl.col("n_rows").cast(pl.Int64)
+            if "n_rows" in df.columns
+            else pl.lit(None, dtype=pl.Int64)
+        ).alias("n_rows"),
+        (
+            pl.col("item_label").cast(pl.String)
+            if "item_label" in df.columns
+            else pl.lit(None, dtype=pl.String)
+        ).alias("item_label"),
+        (
+            pl.col("item_table").cast(pl.String)
+            if "item_table" in df.columns
+            else pl.lit(None, dtype=pl.String)
+        ).alias("item_table"),
+    ]
+
+    result: dict[str, dict[str, dict[str, object]]] = {}
+    for concept, item_id, n_rows, item_label, item_table in df.select(exprs).iter_rows():
+        result.setdefault(concept, {})[item_id] = {
+            "n_rows": n_rows,
+            "item_label": item_label,
+            "item_table": item_table,
+        }
     return result
 
 
@@ -282,7 +305,7 @@ def _concept_rows(
     reference: list[dict[str, str]],
     basis: ComparisonBasis,
     crosswalk: dict[str, set[str]] | None,
-    reference_observed: dict[str, int | None] | None = None,
+    reference_observed: dict[str, dict[str, object]] | None = None,
 ) -> tuple[list[dict[str, object]], str, dict[str, int | None]]:
     """Item rows, relationship and counts for one concept.
 
@@ -299,10 +322,20 @@ def _concept_rows(
     r_ids = {r["item_id"] for r in reference}
     direct = basis == "direct_identifier_match"
 
-    def ref_observed(item_id: str) -> tuple[bool | None, int | None]:
+    def ref_observed(
+        item_id: str,
+    ) -> tuple[bool | None, int | None, str | None, str | None]:
         if reference_observed is None:
-            return None, None
-        return item_id in reference_observed, reference_observed.get(item_id)
+            return None, None, None, None
+        info = reference_observed.get(item_id)
+        if info is None:
+            return False, None, None, None
+        return (
+            True,
+            info.get("n_rows"),
+            info.get("item_label"),
+            info.get("item_table"),
+        )
 
     def flags(
         weavehr_observed: bool | None,
@@ -310,8 +343,10 @@ def _concept_rows(
         reference_configured: bool | None,
         item_id: str,
     ) -> dict[str, object]:
-        observed, n_ref = (
-            ref_observed(item_id) if reference_configured is not None else (None, None)
+        observed, n_ref, _, _ = (
+            ref_observed(item_id)
+            if reference_configured is not None
+            else (None, None, None, None)
         )
         return {
             "weavehr_observed": weavehr_observed,
@@ -376,14 +411,17 @@ def _concept_rows(
         status, counterpart = status_reference(item)
         if basis == "direct_identifier_match" and status == "shared":
             continue  # already listed once with side == "both"
+
+        _, _, observed_label, observed_table = ref_observed(item["item_id"])
+
         rows.append(
             {
                 "side": "reference",
                 "item_status": status,
                 **flags(False if direct else None, None, True, item["item_id"]),
                 "item_id": item["item_id"],
-                "item_label": item["item_label"],
-                "item_table": item["item_table"],
+                "item_label": observed_label or item["item_label"],
+                "item_table": observed_table or item["item_table"],
                 "weavehr_source_codes": "",
                 "weavehr_n_rows": None,
                 "reference_detail": item["reference_detail"],
@@ -482,7 +520,13 @@ def build_item_review(
     for ricu_name in dynamic_vars or DYNAMIC_VARS:
         weavehr_name = mapping.get(ricu_name)
         concept_file = (
-            find_concept_file(concept_root, weavehr_name, dataset=dataset, version=concept_version)
+            find_concept_file(
+                concept_root,
+                weavehr_name,
+                dataset=dataset,
+                version=concept_version,
+                dataset_version=versions.weavehr.version,
+            )
             if weavehr_name
             else None
         )
@@ -614,6 +658,7 @@ def write_item_review_for_dataset(
             version=concept_version,
             dynamic_vars=vars_,
             concept_mapping=mapping,
+            dataset_version=dataset_version,
         ),
         workspace=paths.concept_root.parent,
         dataset_version=dataset_version,

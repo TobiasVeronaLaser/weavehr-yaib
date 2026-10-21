@@ -376,7 +376,11 @@ def build_dynamic_table(
             continue
 
         concept_file = find_concept_file(
-            concept_root, weavehr_name, dataset=dataset, version=version
+            concept_root,
+            weavehr_name,
+            dataset=dataset,
+            version=version,
+            dataset_version=dataset_version,
         )
         if concept_file is None:
             missing.append((ricu_name, f"missing parquet for WeavEHR concept {weavehr_name!r}"))
@@ -496,6 +500,7 @@ def resolve_build_dataset_version(
             version=version,
             dynamic_vars=dynamic_vars or DYNAMIC_VARS,
             concept_mapping=concept_mapping or RICU_TO_WEAVEHR,
+            dataset_version=dataset_version,
         ),
         workspace=Path(concept_root).expanduser().resolve().parent,
         dataset_version=dataset_version,

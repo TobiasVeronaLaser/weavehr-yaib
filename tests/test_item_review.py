@@ -302,3 +302,89 @@ def test_side_by_side_flags_do_not_cross_identifier_spaces(tmp_path: Path) -> No
     assert (weavehr["weavehr_observed"], weavehr["reference_configured"]) == (True, None)
     reference = items[("reference", "6640")]
     assert (reference["weavehr_observed"], reference["reference_configured"]) == (None, True)
+
+def test_item_review_finds_new_dataset_version_layout(tmp_path: Path) -> None:
+    concept_root = tmp_path / "concepts"
+    path = (
+        concept_root
+        / "heart_rate"
+        / "1.0.0"
+        / "aumc"
+        / "1.5.0.parquet"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    pl.DataFrame(
+        {
+            "source_code": ["MEASUREMENT//3027018//Hartfrequentie///min"],
+            "table": ["MEASUREMENT"],
+            "dataset_version": ["1.5.0"],
+        }
+    ).write_parquet(path)
+
+    review = build_item_review(
+        dataset="aumc",
+        concept_root=concept_root,
+        ricu_concept_dict=_concept_dict(tmp_path / "cd.json", "aumc", [6640]),
+        versions=_versions(
+            "aumc",
+            ("1.5.0", "explicit"),
+            ("1.0.2", "manual_default"),
+        ),
+        dynamic_vars=["hr"],
+    )
+
+    row = review.summary.row(0, named=True)
+    assert row["weavehr_concept_found"] is True
+    assert row["n_weavehr_observed_items"] == 1
+
+def test_reference_observed_items_supply_label_table_and_row_count(tmp_path: Path) -> None:
+    concept_root = tmp_path / "concepts"
+    path = (
+        concept_root
+        / "heart_rate"
+        / "1.0.0"
+        / "aumc"
+        / "1.5.0.parquet"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    pl.DataFrame(
+        {
+            "source_code": ["MEASUREMENT//3027018//Hartfrequentie///min"],
+            "table": ["MEASUREMENT"],
+            "dataset_version": ["1.5.0"],
+        }
+    ).write_parquet(path)
+
+    observed = pl.DataFrame(
+        {
+            "ricu_concept": ["hr"],
+            "item_id": ["6640"],
+            "item_label": ["Hartfrequentie"],
+            "item_table": ["numericitems"],
+            "n_rows": [1234],
+        }
+    )
+
+    review = build_item_review(
+        dataset="aumc",
+        concept_root=concept_root,
+        ricu_concept_dict=_concept_dict(tmp_path / "cd.json", "aumc", [6640]),
+        versions=_versions(
+            "aumc",
+            ("1.5.0", "explicit"),
+            ("1.0.2", "manual_default"),
+        ),
+        dynamic_vars=["hr"],
+        reference_observed_items=observed,
+    )
+
+    rows = review.items.to_dicts()
+    reference = next(r for r in rows if r["side"] == "reference")
+
+    assert reference["item_id"] == "6640"
+    assert reference["item_label"] == "Hartfrequentie"
+    assert reference["item_table"] == "numericitems"
+    assert reference["reference_observed"] is True
+    assert reference["reference_n_rows"] == 1234

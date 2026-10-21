@@ -395,6 +395,7 @@ def build_and_write_yaib_wide_for_dataset(
         version=version,
         dynamic_vars=dynamic_vars or DYNAMIC_VARS,
         concept_mapping=concept_mapping or RICU_TO_WEAVEHR,
+        dataset_version=dataset_version,
     )
     weavehr_version = resolve_weavehr_version(
         dataset=paths.dataset,

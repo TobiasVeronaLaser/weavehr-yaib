@@ -46,20 +46,32 @@ def find_concept_file(
     *,
     dataset: str = "mimic-iv",
     version: str | None = None,
+    dataset_version: str | None = None,
 ) -> Path | None:
     """Find one WeavEHR concept parquet.
 
-    Expected common layout:
+    Supported layouts:
+        <concept_root>/<concept>/<version>/<dataset>/<dataset_version>.parquet
         <concept_root>/<concept>/<version>/<dataset>.parquet
 
-    The function also falls back to a recursive search for '<dataset>.parquet'
-    below the concept folder.
+    The second form is retained for compatibility with older WeavEHR outputs.
     """
     root = Path(concept_root)
     concept_dir = root / weavehr_concept
     candidates: list[Path] = []
 
     if version is not None:
+        if dataset_version is not None:
+            candidates.append(
+                concept_dir / version / dataset / f"{dataset_version}.parquet"
+            )
+            candidates.append(
+                concept_dir
+                / version
+                / dataset.replace("-", "_")
+                / f"{dataset_version}.parquet"
+            )
+
         candidates.append(concept_dir / version / f"{dataset}.parquet")
         candidates.append(concept_dir / version / f"{dataset.replace('-', '_')}.parquet")
 
@@ -88,6 +100,7 @@ def mapped_concept_files(
     version: str | None,
     dynamic_vars: list[str],
     concept_mapping: dict[str, str],
+    dataset_version: str | None = None,
 ) -> list[Path]:
     """Concept parquets that the dynamic-table build will read."""
     files = []
@@ -95,7 +108,13 @@ def mapped_concept_files(
         weavehr_name = concept_mapping.get(ricu_name)
         if weavehr_name is None:
             continue
-        path = find_concept_file(concept_root, weavehr_name, dataset=dataset, version=version)
+        path = find_concept_file(
+            concept_root,
+            weavehr_name,
+            dataset=dataset,
+            version=version,
+            dataset_version=dataset_version,
+        )
         if path is not None:
             files.append(path)
     return files

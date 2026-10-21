@@ -48,16 +48,85 @@ Further mapping/version review is required.
 
 Current notable findings:
 
-- `mchc`: approximately 98.77% presence disagreement and substantial value differences
+- `mchc`: approximately 98.77% presence disagreement
 - `lymph`: approximately 0.005% presence disagreement
 - `urine`: 0% presence disagreement
 
-The newly implemented HiRID `lymph` and `urine` concepts reproduce the RICU
-reference closely.
+#### `mchc`
 
-For `urine`, one implementation edge case involving missing values during
-de-accumulation is still open and should be corrected/tested before final
-validation.
+The HiRID `mchc` discrepancy is explained by a reference-side conversion and
+range-filtering difference rather than by missing WeavEHR source coverage.
+
+WeavEHR maps HiRID variable `24000170` and converts the reported MCHC values
+from g/L using a factor of `0.1`, yielding values in the expected g/dL / `%`
+scale.
+
+Observed WeavEHR output:
+
+- raw concept rows: 223,062
+- non-null rows: 223,062
+- subjects with values: 30,850
+- unique subject/time pairs: 103,775
+- value range: approximately 26.2 to 41.3
+- median: approximately 33.8
+
+RICU uses the same HiRID variable ID but applies a factor of `0.16114` and
+defines the valid `mchc` range as 20 to 50.
+
+Observed RICU output:
+
+- non-null hourly values: 1,554
+- patients with values: 830
+- value range: approximately 42.21868 to 49.9534
+
+The RICU behaviour was reproduced from the WeavEHR values by applying the
+relative scaling factor `0.16114 / 0.1 = 1.6114` followed by the RICU range
+filter `20 <= mchc <= 50`:
+
+- surviving raw WeavEHR rows: 4,682
+- surviving subjects: 830
+- surviving unique subject/time pairs: 1,554
+- surviving unique subject/hour pairs: 1,554
+- converted value range: approximately 42.21868 to 49.9534
+
+The reproduced subject count, hourly count, minimum and maximum match the RICU
+output. The approximately 98.77% presence disagreement is therefore attributable
+to the differing RICU conversion and subsequent upper-range filtering, not to a
+WeavEHR extraction or mapping coverage defect.
+
+#### `lymph`
+
+`lymph` shows approximately 0.005% presence disagreement and reproduces the
+RICU reference closely.
+
+#### `urine`
+
+`urine` shows 0% presence disagreement and reproduces the RICU reference
+closely at the current aggregate comparison level.
+
+HiRID stores urine output as a cumulative signal. WeavEHR reproduces RICU's
+de-accumulation logic using the equivalent of `c(x[1], diff(x))`, with negative
+differences clamped to zero.
+
+A missing-value edge case was identified in the initial implementation:
+for a sequence `[100, NA, 150]`, the transformer incorrectly produced
+`[100, NA, 150]` because a missing previous value was treated like the first
+observation of a subject.
+
+RICU's corresponding behaviour was verified directly as:
+
+`[100, NA, 150] -> [100, NA, NA]`
+
+The WeavEHR transformer was corrected so that only the actual first record of
+each subject keeps its original cumulative value. A regression test covering
+this missing-value case was added.
+
+HiRID transformer test result after the fix:
+
+- 6 / 6 tests passed
+- missing-value de-accumulation regression test passed
+
+The known HiRID `urine` implementation edge case is therefore resolved.
 
 ---
 

@@ -1,0 +1,2 @@
+weavehr_rows,reference_rows,joined_rows,shared_rows,only_weavehr_rows,only_reference_rows,both_non_null,both_null,only_weavehr_value,only_reference_value,equal_non_null,different_non_null,equal_including_null
+546028,546028,546028,546028,0,0,546028,0,0,0,546028,0,546028

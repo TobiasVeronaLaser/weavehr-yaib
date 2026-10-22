@@ -457,3 +457,127 @@ this stage.
   complete.
 - After feature validation, validate derived outcomes/cohorts separately,
   including mortality, AKI and sepsis.
+
+## Derived outcome/cohort validation
+
+### In-hospital mortality
+
+#### MIMIC-IV
+
+WeavEHR MIMIC-IV 3.1 in-hospital mortality was compared against the RICU
+MIMIC-IV reference definition. RICU defines in-hospital mortality from
+`admissions.hospital_expire_flag == 1`.
+
+The WeavEHR concept output contains one event per hospital admission at
+`dischtime`. The combination of `subject_id` and `dischtime` is unique in the
+RICU admissions table and was therefore used for the row-level comparison.
+
+Results:
+
+- WeavEHR rows: 546,028
+- RICU rows: 546,028
+- shared rows: 546,028
+- only WeavEHR: 0
+- only RICU: 0
+- equal mortality values: 546,028
+- different mortality values: 0
+- mortality = 0: 534,227
+- mortality = 1: 11,801
+
+Thus, MIMIC-IV in-hospital mortality is reproduced exactly by WeavEHR for the
+evaluated admissions.
+
+The installed RICU 0.6.3 concept-dictionary parser could not directly load the
+`death` concept in this environment. The RICU package definition was therefore
+verified from its shipped `concept-dict.json`, and the reference was reproduced
+directly from RICU's imported MIMIC-IV `admissions` table using the specified
+`hospital_expire_flag == 1` transformation.
+
+
+#### eICU
+
+RICU defines eICU in-hospital mortality from
+`patient.hospitaldischargestatus == "Expired"`.
+
+The raw eICU patient table contains 200,859 ICU stays but only 166,355 unique
+hospital stays (`patienthealthsystemstayid`). WeavEHR produces one
+in-hospital-mortality event per hospital stay, so the apparent difference of
+34,504 rows is entirely explained by multiple ICU stays belonging to the same
+hospital admission.
+
+Additional checks showed:
+
+- ICU stays: 200,859
+- hospital stays: 166,355
+- hospital stays with more than one ICU stay: 27,635
+- extra ICU stays beyond one per hospital stay: 34,504
+- hospital stays with conflicting non-null discharge status: 0
+
+The hospital-level comparison used
+`patienthealthsystemstayid == WeavEHR subject_id`.
+
+Results:
+
+- WeavEHR rows: 166,355
+- RICU hospital-level rows: 166,355
+- shared non-null status values: 164,875
+- equal shared status values: 164,875
+- different shared status values: 0
+- only WeavEHR status: 0
+- only RICU status: 0
+- both missing: 1,480
+- Alive: 150,252
+- Expired: 14,623
+
+Thus, eICU in-hospital mortality is reproduced exactly by WeavEHR at the
+hospital-admission level. The lower row count relative to the raw eICU patient
+table reflects the intended aggregation from ICU stays to hospital stays rather
+than missing outcome coverage.
+
+
+#### HiRID
+
+WeavEHR HiRID 1.1.1 in-hospital mortality was compared against the HiRID
+discharge status used by RICU.
+
+The HiRID `general` table contains one row per patient and 33,905 patients in
+total. WeavEHR likewise produces exactly one in-hospital-mortality row per
+patient.
+
+Status counts are identical:
+
+- alive: 31,604
+- dead: 2,062
+- missing: 239
+
+The row-level comparison used `patientid == WeavEHR subject_id`.
+
+Results:
+
+- WeavEHR rows: 33,905
+- RICU/reference rows: 33,905
+- shared non-null status values: 33,666
+- equal shared status values: 33,666
+- different shared status values: 0
+- only WeavEHR status: 0
+- only RICU/reference status: 0
+- both missing: 239
+- equal including missing values: 33,905
+- WeavEHR dead patients: 2,062
+- RICU/reference dead patients: 2,062
+- dead patients only in WeavEHR: 0
+- dead patients only in RICU/reference: 0
+
+RICU's HiRID `death` definition uses observation variables 110 and 200 to
+determine the event time and retains patients whose `general.discharge_status`
+is `dead`. There are 33,897 patients with at least one observation of variable
+110 or 200. All 2,062 dead patients have such an observation; therefore no
+death is lost through RICU's event-time construction.
+
+Thus, HiRID in-hospital mortality status is reproduced exactly by WeavEHR.
+
+The final mortality comparisons for MIMIC-IV, eICU and HiRID were additionally
+rerun through the repository's reproducible outcome-validation helpers. All
+three comparisons produced zero disagreement rows. The generated summaries and
+disagreement tables are stored under
+`docs/validation/outcomes/in_hospital_mortality/`.

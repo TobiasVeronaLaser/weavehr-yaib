@@ -20,6 +20,17 @@ from .item_review import (
     write_item_review,
     write_item_review_for_dataset,
 )
+from .outcome_validation import (
+    OutcomeComparison,
+    compare_categorical_outcome,
+    normalize_eicu_mortality_reference,
+    normalize_eicu_mortality_weavehr,
+    normalize_hirid_mortality_reference,
+    normalize_hirid_mortality_weavehr,
+    normalize_mimic_mortality_reference,
+    normalize_mimic_mortality_weavehr,
+    write_outcome_comparison,
+)
 from .pipeline import (
     build_mortality_dynamic_wide,
     build_mortality_dynamic_wide_from_config,
@@ -84,6 +95,15 @@ __all__ = [
     "load_config",
     "build_dynamic_table",
     "write_dynamic_table",
+    "OutcomeComparison",
+    "compare_categorical_outcome",
+    "normalize_mimic_mortality_weavehr",
+    "normalize_mimic_mortality_reference",
+    "normalize_eicu_mortality_weavehr",
+    "normalize_eicu_mortality_reference",
+    "normalize_hirid_mortality_weavehr",
+    "normalize_hirid_mortality_reference",
+    "write_outcome_comparison",
     "build_mortality_dynamic_wide",
     "build_mortality_dynamic_wide_from_config",
     "write_mortality_dynamic_wide_from_config",

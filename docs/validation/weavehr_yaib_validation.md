@@ -28,18 +28,73 @@ in the paper.
 
 - Dynamic variables evaluated: 48
 - Concepts above the provisional 1% presence-disagreement threshold: 2 / 48
-- `bili_dir`: approximately 1.54%
-- `bnd`: approximately 1.01%
+- WeavEHR dataset version: MIMIC-IV 3.1
+- RICU reference version: MIMIC-IV 2.2
 
-For both concepts, shared values are essentially identical. The observed
-difference is primarily a coverage/presence difference.
+#### `bili_dir`
 
-The comparison is additionally affected by a dataset-version difference:
+Presence disagreement is approximately 1.54%.
 
-- WeavEHR: MIMIC-IV 3.1
-- RICU reference: MIMIC-IV 2.2
+Within the official validation scope:
 
-Further mapping/version review is required.
+- both non-null: 9,883
+- only WeavEHR: 154
+- only RICU: 1
+- WeavEHR non-null: 10,038
+- RICU non-null: 9,884
+
+Shared values are effectively identical:
+
+- mean absolute difference: approximately `4.82e-11`
+- median absolute difference: `0`
+- maximum absolute difference: approximately `4.77e-7`
+
+WeavEHR and RICU both use MIMIC-IV `labevents.itemid = 50883` for direct
+bilirubin, so the discrepancy is not explained by a different source-item
+mapping.
+
+RICU defines a valid range of 0 to 50 mg/dL for `bili_dir`. The WeavEHR-only
+values inspected within the normalized comparison data were all below 50 mg/dL,
+so the RICU upper-range filter does not explain the observed presence
+difference.
+
+The remaining discrepancy is therefore consistent with dataset-version,
+stay-scope, measurement-timing, or source-coverage differences between
+MIMIC-IV 3.1 and the RICU MIMIC-IV 2.2 reference.
+
+#### `bnd`
+
+Presence disagreement is approximately 1.01%.
+
+Within the official validation scope:
+
+- both non-null: 16,682
+- only WeavEHR: 163
+- only RICU: 7
+- WeavEHR non-null: 16,846
+- RICU non-null: 16,689
+
+For all shared non-null values:
+
+- mean absolute difference: `0`
+- median absolute difference: `0`
+- maximum absolute difference: `0`
+
+WeavEHR and RICU both use MIMIC-IV `labevents.itemid = 51144` for band-form
+neutrophils, so the discrepancy is not explained by a different source-item
+mapping.
+
+No value-transformation discrepancy has been identified on shared keys.
+
+The unmatched `bnd` values were additionally inspected for an obvious
+value-dependent filtering pattern. The WeavEHR-only values span a regular range
+from 0 to 49%, while the small RICU-only subset spans 0 to 8%. No specific
+threshold or boundary pattern was identified.
+
+The remaining difference is therefore a presence/coverage discrepancy and is
+consistent with dataset-version, stay-scope, measurement-timing, or
+source-coverage differences between MIMIC-IV 3.1 and the RICU MIMIC-IV 2.2
+reference.
 
 ### HiRID
 

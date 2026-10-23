@@ -1,0 +1,20 @@
+ricu_concept,weavehr_concept,item_id,item_label,normalized_code,n_values,min,p05,q25,median,q75,p95,max,typical_values
+ckmb,creatine_kinase_MB,3005785,MB-Massa (bloed)//µg/l,creatine_kinase_MB//ng/mL,59014,0.0,3.0999999046325684,8.899999618530273,17.899999618530273,32.400001525878906,162.0,2227.0,3.1 | 8.9 | 17.9 | 32.4 | 162
+cl,chloride,3014576,Chloor (bloed)//mmol/l; Chloor//mmol/l,chloride//mEq/L,180102,-103.0,97.0,103.0,108.0,113.0,120.0,11010.0,97 | 103 | 108 | 113 | 120
+cl,chloride,3018572,Chloor Astrup//mmol/l; Cl (onv.ISE) (bloed)//mmol/l,chloride//mEq/L,346818,0.0,96.0,102.0,106.0,110.0,116.0,200.0,96 | 102 | 106 | 110 | 116
+fio2,fraction_of_inspired_oxygen,3020716,O2 Volume(2)//None; O2 Volume//None,fraction_of_inspired_oxygen//%,85391,0.0,38.0,40.0,41.0,46.0,61.0,100.0,38 | 40 | 41 | 46 | 61
+fio2,fraction_of_inspired_oxygen,3025408,O2 concentratie//Geen; Zephyros O2i//Geen,fraction_of_inspired_oxygen//%,15645447,0.0,29.0,36.0,41.0,50.0,65.0,2393872.0,29 | 36 | 41 | 50 | 65
+inr_pt,prothrombin_time_international_normalized_ratio,3032080,Prothrombinetijd  (bloed)//INR; Prothrombinetijd (bloed)//INR,prothrombin_time_international_normalized_ratio//None,387380,0.0,1.0,1.1299999952316284,1.2599999904632568,1.4700000286102295,2.3499999046325684,159.0,1 | 1.13 | 1.26 | 1.47 | 2.35
+lymph,lymphocytes,3002030,Lymfocyten % (bloed)//Geen; Lymfocyten//None,lymphocytes//%,4654,0.0,2.0,6.0,13.0,23.0,35.0,100.0,2 | 6 | 13 | 23 | 35
+mchc,mean_corpuscular_hemoglobin_concentration,40762530,M.C.H.C.//mmol/l; MCHC (bloed)-LabZis2//mmol/cel; MCHC (bloed)//mmol/cel,mean_corpuscular_hemoglobin_concentration//%,8010,25.775999069213867,32.21999740600586,33.830997467041016,33.830997467041016,35.44199752807617,37.05299758911133,3230.054931640625,32.22 | 33.831 | 33.831 | 35.442 | 37.053
+methb,methemoglobin,3007930,FMetHb//None; Met-Hb  (bloed)//Geen; Met-Hb (bloed)//Geen,methemoglobin//%,336872,-1.2000000476837158,0.20000000298023224,0.6000000238418579,0.800000011920929,1.100000023841858,1.5,29.200000762939453,0.2 | 0.6 | 0.8 | 1.1 | 1.5
+ptt,partial_thromboplastin_time,3013466,APTT  (bloed)//sec; APTT (bloed)//sec; CEF-KAOL.T (bloed)//sec; Cephalinetyd//sec,partial_thromboplastin_time//sec,204872,0.0,31.0,37.0,45.0,60.0,90.0,241.0,31 | 37 | 45 | 60 | 90
+temp,temperature,3006322,Temp Oraal//°C,temperature//C,546,31.0,31.799999237060547,32.79999923706055,34.70000076293945,36.5,38.0,39.29999923706055,31.8 | 32.8 | 34.7 | 36.5 | 38
+temp,temperature,3022060,Temp Rectaal//°C,temperature//C,387259,0.0,32.400001525878906,35.70000076293945,36.79999923706055,37.599998474121094,38.79999923706055,373.0,32.4 | 35.7 | 36.8 | 37.6 | 38.8
+temp,temperature,3025085,Temp Axillair//°C,temperature//C,202198,-543.0,35.400001525878906,36.20000076293945,36.79999923706055,37.29999923706055,38.29999923706055,376.5,35.4 | 36.2 | 36.8 | 37.3 | 38.3
+temp,temperature,3025163,Temp Oor//°C,temperature//C,52540,0.0,35.900001525878906,36.599998474121094,37.099998474121094,37.599998474121094,38.5,365.0,35.9 | 36.6 | 37.1 | 37.6 | 38.5
+temp,temperature,21490586,PiCCO Tb blood temperature//°C; Temp Bloed//°C,temperature//C,2004487,0.0,35.599998474121094,36.29999923706055,36.79999923706055,37.099998474121094,37.70000076293945,371.0,35.6 | 36.3 | 36.8 | 37.1 | 37.7
+urine,urine_output,3007123,UrineSpontaan//ml,urine_output//mL,29366,0.0,20.0,100.0,200.0,350.0,600.0,2000.0,20 | 100 | 200 | 350 | 600
+urine,urine_output,3014315,UrineCAD//ml; UrineIncontinentie//ml; UrineSplint Li//ml; UrineSplint Re//ml; UrineSupraPubis//ml; UrineUP//ml,urine_output//mL,3319256,-20.0,18.0,60.0,100.0,175.0,370.0,6352410.0,18 | 60 | 100 | 175 | 370
+urine,urine_output,3016267,Spoelblaas Uit//ml,urine_output//mL,1290,0.0,0.0,200.0,540.0,3000.0,4200.0,14000.0,0 | 200 | 540 | 3000 | 4200
+urine,urine_output,21491173,Nefrodrain li Uit//ml; Nefrodrain re Uit//ml,urine_output//mL,15124,0.0,0.0,15.0,40.0,85.0,220.0,1200.0,0 | 15 | 40 | 85 | 220

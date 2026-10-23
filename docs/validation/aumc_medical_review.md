@@ -56,8 +56,8 @@ For each source, p05-p95 and representative quantile values are shown for clinic
 
 **RICU reference source(s)**
 
-- `14258` — Lymfocyten (bloed) (numericitems, n=11,647)
 - `11846` — Lymfocyten % (bloed) (numericitems, n=4,606)
+- `14258` — Lymfocyten (bloed) (numericitems, n=11,647)
 
 **WeavEHR / OMOP candidate source(s)**
 
@@ -173,6 +173,8 @@ For each source, p05-p95 and representative quantile values are shown for clinic
 **RICU reference source(s)**
 
 - `8658` — Temp Bloed (numericitems, n=1,999,754)
+- `13952` — Temp Blaas (numericitems, n=927,689)
+- `16110` — Temp Oesophagus (numericitems, n=833,973)
 
 **WeavEHR / OMOP candidate source(s)**
 
@@ -201,6 +203,16 @@ For each source, p05-p95 and representative quantile values are shown for clinic
   - n=2,004,487; p05=35.6; q25=36.3; median=36.8; q75=37.1; p95=37.7
   - representative values: 35.6 | 36.3 | 36.8 | 37.1 | 37.7
   - observed extremes: min=0, max=371
+- `21490588` — **Temp Oesophagus//°C**
+  - normalized concept/unit: `temperature//C`
+  - n=833,973; p05=33.6; q25=36.2; median=36.9; q75=37.4; p95=38.5
+  - representative values: 33.6 | 36.2 | 36.9 | 37.4 | 38.5
+  - observed extremes: min=0, max=375
+- `21490870` — **Temp Blaas//°C**
+  - normalized concept/unit: `temperature//C`
+  - n=927,689; p05=35.7; q25=36.8; median=37.3; q75=37.7; p95=38.6
+  - representative values: 35.7 | 36.8 | 37.3 | 37.7 | 38.6
+  - observed extremes: min=5, max=40.9
 
 **Reviewer decision:**
 

@@ -582,6 +582,66 @@ Aggregated to the stay level:
 The hourly label counts must not be interpreted as patient counts because the
 YAIB AKI outcome is represented on the hourly prediction grid.
 
+#### Sepsis cohort
+
+The original YAIB Sepsis-3 task was executed for eICU using the same reference
+environment described above.
+
+Two additional compatibility adjustments were required for the current
+R/data.table/RICU environment.
+
+First, `si_mode = "abx"` is propagated through the recursive concept loader to
+the top-level `sep3_alt` callback. The original callback accepted this argument
+through `...` and subsequently passed it to `ricu:::collect_dots()`, where it
+was incorrectly interpreted as an additional recursive concept input. The
+local reference checkout was therefore patched so that `sep3_alt()` explicitly
+accepts and ignores `si_mode`, while the argument continues to be used by the
+lower-level suspected-infection callback.
+
+Second, the eICU hospital-prevalence helper used the implicit data.table join
+`concept[hospital_ids]`. Current data.table requires an explicit join
+specification for this operation. The local reference checkout was therefore
+patched to join explicitly on the concept ID variable. This preserves the
+original cohort logic.
+
+Starting from the YAIB/RICU eICU base cohort, the sepsis-specific sequential
+attrition was:
+
+- low hospital-level sepsis prevalence: 172,085 newly excluded, 10,703
+  remaining
+- sepsis onset within the first 6 h: 121 newly excluded, 10,582 remaining
+
+The final original YAIB/RICU eICU sepsis cohort therefore contains **10,582
+stays**.
+
+The generated hourly outcome table contains 676,185 rows:
+
+- positive hourly sepsis labels: 481
+- negative hourly sepsis labels: 675,704
+- missing hourly labels: 0
+
+Aggregated to the stay level:
+
+- stays with at least one positive sepsis label: 37
+- stays without a positive sepsis label: 10,545
+- stays with all sepsis labels missing: 0
+
+The hourly label counts must not be interpreted as patient counts because the
+YAIB sepsis outcome is represented on the hourly prediction grid.
+
+No corresponding Sepsis-3 outcome concept is currently present in the
+generated WeavEHR concept outputs used for this validation. The available
+derived outcome concepts include `aki`, `aki_creatinine`,
+`aki_urine_output`, and `in_hospital_mortality`, while no `sepsis`, `sep3`,
+or `susp_inf` output is present. Source inspection likewise identified only
+generic windowing infrastructure and associated tests, not a complete
+Sepsis-3 concept implementation.
+
+The YAIB/RICU sepsis reference is therefore reproducible, but no direct
+WeavEHR-versus-reference sepsis outcome comparison is currently possible from
+the available outputs. This is recorded as an implementation/coverage gap
+rather than debugged or implemented as part of this validation.
+
 ### In-hospital mortality
 
 #### MIMIC-IV

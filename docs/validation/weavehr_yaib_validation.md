@@ -551,6 +551,37 @@ predictor window is limited to the first 24 hours and eligibility requires at
 least 30 hours of ICU stay or survival. This validation is therefore distinct
 from the repository's separate in-hospital-mortality concept validation below.
 
+#### AKI cohort
+
+The original YAIB AKI task was executed for eICU using the same reference
+environment and the locally patched YAIB checkout described above.
+
+Starting from the original YAIB/RICU base cohort of 182,788 stays, the
+sequential AKI-specific attrition was:
+
+- eICU hospital-level AKI-prevalence exclusion: 20 newly excluded, 182,768
+  remaining
+- AKI onset within the first 6 h: 9,876 newly excluded, 172,892 remaining
+- baseline creatinine > 4 mg/dL: 8,010 newly excluded, 164,882 remaining
+
+The final original YAIB/RICU eICU AKI cohort therefore contains **164,882
+stays**.
+
+The generated hourly outcome table contains 6,628,740 rows:
+
+- positive hourly AKI labels: 792,371
+- negative hourly AKI labels: 5,836,369
+- missing hourly labels: 0
+
+Aggregated to the stay level:
+
+- stays with at least one positive AKI label: 62,313
+- stays without a positive AKI label: 102,569
+- stays with all AKI labels missing: 0
+
+The hourly label counts must not be interpreted as patient counts because the
+YAIB AKI outcome is represented on the hourly prediction grid.
+
 ### In-hospital mortality
 
 #### MIMIC-IV

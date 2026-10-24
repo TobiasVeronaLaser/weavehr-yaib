@@ -460,6 +460,97 @@ this stage.
 
 ## Derived outcome/cohort validation
 
+### YAIB/RICU eICU reference cohort reproduction
+
+The original YAIB-cohorts implementation was executed against the local eICU
+RICU reference data in order to obtain the original cohort attrition counts for
+comparison with the WeavEHR-derived cohorts.
+
+Reference environment:
+
+- YAIB-cohorts commit: `74ac699`
+- RICU: `0.6.3`
+- R: `4.3.3`
+- data.table: `1.18.4`
+- dataset: eICU-CRD 2.0
+
+Several environment and compatibility issues had to be resolved before the
+original YAIB code could be executed reproducibly.
+
+First, `RICU_CONFIG_PATH` was set globally to `/home/q039tl/ricu_config`, while
+that directory did not contain a `concept-dict.json`. RICU 0.6.3 includes this
+path in `config_paths()` and its dictionary merge fails when one of the
+configured paths has no matching dictionary. For the reference runs, user
+environment and profile loading were disabled with
+`R_ENVIRON_USER=/dev/null` and `R_PROFILE_USER=/dev/null`, while
+`RICU_DATA_PATH` and `RICU_SRC_LOAD` were set explicitly.
+
+Second, the R package `units` was not installed although several RICU concepts
+used by YAIB require unit-aware concepts. `units` 1.0.1 was installed against
+the system `udunits2` library.
+
+Third, the original YAIB helper `R/src/obs_time.R` was incompatible with the
+installed data.table 1.18.4. The temporary column `...time` was referenced in a
+data.table update join as `patients[x, end := pmin(end, ...time), on = c(ids)]`.
+
+With current data.table NSE rules this was interpreted as a lookup for `.time`
+in the calling scope. The reference checkout was therefore patched locally to
+refer explicitly to the joined `i` table:
+`patients[x, end := pmin(end, i....time), on = c(ids)]`.
+
+This is treated as a local compatibility patch only. It does not change the
+cohort logic or outcome definition.
+
+#### Base cohort
+
+The original YAIB eICU base cohort produced the following sequential
+attrition:
+
+- initial ICU stays: 200,859
+- invalid ICU length of stay: 2 excluded, 200,857 remaining
+- ICU length of stay < 6 h: 16,412 newly excluded, 184,445 remaining
+- fewer than 4 measurement hours across the 48 dynamic variables: 410 newly
+  excluded, 184,035 remaining
+- more than 12 consecutive hours without measurements: 792 newly excluded,
+  183,243 remaining
+- age < 18 years: 455 newly excluded, 182,788 remaining
+
+The final original YAIB/RICU eICU base cohort therefore contains **182,788
+stays**.
+
+The earlier WeavEHR-derived Python reconstruction produced 181,738 stays. The
+largest discrepancy appears at the `<4 measurement hours` exclusion: the
+original YAIB/RICU reference excludes only 410 additional stays at this step,
+whereas the WeavEHR-derived reconstruction excluded 1,465. This indicates that
+the main cohort difference is already introduced by measurement coverage across
+the 48 dynamic variables rather than by the later age or observation-gap
+criteria.
+
+#### Mortality24 cohort
+
+The original YAIB mortality task was then executed using the same reference
+environment and base-cohort logic.
+
+Sequential mortality-specific attrition:
+
+- after exclusion of deaths within the first 30 h: 179,705 stays remain;
+  3,083 newly excluded at this step
+- after exclusion of ICU stays shorter than 30 h: 113,381 stays remain;
+  66,324 newly excluded at this step
+
+The final original YAIB/RICU eICU Mortality24 cohort therefore contains
+**113,381 stays**.
+
+The previous WeavEHR-derived reconstruction produced 113,076 stays. Because the
+reference base cohort already differs before the mortality-specific exclusion
+steps, the Mortality24 difference must be interpreted in the context of the
+upstream base-cohort measurement-coverage discrepancy.
+
+The YAIB mortality task uses eventual ICU mortality as the label, while the
+predictor window is limited to the first 24 hours and eligibility requires at
+least 30 hours of ICU stay or survival. This validation is therefore distinct
+from the repository's separate in-hospital-mortality concept validation below.
+
 ### In-hospital mortality
 
 #### MIMIC-IV

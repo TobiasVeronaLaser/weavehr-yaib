@@ -441,7 +441,12 @@ narrower source set.
 Two concepts require targeted implementation decisions:
 
 - `lymph`: lymphocyte percentage and absolute lymphocyte count should not be
-  treated as interchangeable raw measurements;
+  treated as interchangeable raw measurements. Source inspection subsequently
+  confirmed that RICU also targets `%`: native AUMC item `11846` is used
+  directly, while absolute-count item `14258` is converted with RICU's
+  `blood_cell_ratio` callback as `100 * lymphocytes / wbc`. Reproducing the
+  additional RICU coverage in WeavEHR therefore requires an explicit derived
+  percentage calculation rather than broadening the simple percentage mapping;
 - `urine`: additional true urine-output sources are clinically useful, but
   bladder-irrigation (`Spoelblaas`) output should not be interpreted directly
   as urine production without accounting for irrigation input.

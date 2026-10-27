@@ -150,35 +150,75 @@ coverage rather than incorrect mapping.
 
 **Technical finding**
 
-RICU combines lymphocyte sources with different semantics, while WeavEHR OMOP
-concept `3002030` represents lymphocytes per 100 leukocytes.
+Both WeavEHR and RICU define the harmonized lymphocyte concept in percent.
+
+WeavEHR maps OMOP concept `3002030` (`Lymphocytes/100 leukocytes in Blood`)
+directly to the `%` concept.
+
+RICU uses two native AUMC sources:
+
+- item `11846` is loaded directly as the percentage source;
+- item `14258` is an absolute lymphocyte count and is not merged directly into
+  the percentage concept. RICU applies its `blood_cell_ratio` callback, loads
+  the white-blood-cell-count concept (`wbc`), and computes:
+
+  `100 * absolute_lymphocyte_count / white_blood_cell_count`
+
+  with the resulting unit set explicitly to `%`.
+
+The large WeavEHR/RICU presence difference therefore reflects additional
+derived percentage observations in RICU rather than direct mixing of
+incompatible raw units.
 
 **Medical interpretation**
 
-Lymphocyte percentage and absolute lymphocyte count are distinct measurements,
-often obtained using different laboratory techniques, and should not be treated
-as the same concept without explicit transformation.
+The medical review confirmed that lymphocyte percentage and absolute lymphocyte
+count are distinct raw measurements and should not be treated as
+interchangeable values. The inspected RICU implementation is consistent with
+this requirement because the absolute count is converted explicitly to the
+canonical percentage representation using white blood cell count.
 
 **Implementation decision**
 
-Do not combine percentage and absolute-count measurements under one simple
-concept merely to reproduce RICU coverage.
+Keep the current WeavEHR `lymphocytes` concept canonical unit as `%` and retain
+OMOP concept `3002030` as the direct percentage source.
 
-The current percentage mapping should remain semantically explicit. A separate
-implementation decision is required for absolute lymphocyte counts and for any
-derived conversion using white blood cell count.
+Do not add absolute lymphocyte-count measurements directly to the simple
+mapping.
+
+If WeavEHR is extended to reproduce the additional RICU coverage, it should be
+implemented as an explicit derived calculation from absolute lymphocyte count
+and `white_blood_cell_count`, producing `%`, rather than by broadening the
+simple mapping.
 
 **Follow-up**
 
-- identify the desired canonical semantics of the YAIB-facing `lymph` feature;
-- determine whether separate percentage and absolute-count concepts are needed;
-- evaluate whether a derived conversion using white blood cell count should be
-  implemented rather than merging raw measurements.
+- identify the AUMC/OMOP representation of the absolute lymphocyte-count source
+  corresponding to native AUMC item `14258`;
+- determine whether that source is available with sufficient provenance in the
+  AMSTEL/OMOP representation;
+- if available, implement and validate the derived percentage calculation
+  separately;
+- compare the resulting coverage with RICU after the derived calculation is
+  implemented.
 
 **Paper interpretation**
 
-The disagreement exposes a semantic difference between source harmonization
-strategies rather than a simple missing-item error.
+This discrepancy demonstrates why agreement against a reference implementation
+must be interpreted at the level of concept semantics rather than raw source
+counts. The initial coverage difference appeared to reflect incompatible
+lymphocyte measurements, but source-code inspection showed that RICU preserves
+a canonical percentage definition by deriving additional percentage values
+from absolute lymphocyte counts and white blood cell count. Medical review
+independently confirmed that the raw measurements should remain distinct.
+
+Accordingly, the WeavEHR/RICU difference is not evidence that the WeavEHR
+percentage mapping is clinically incorrect. Instead, it identifies a
+reproducibility gap in derived source coverage: WeavEHR currently includes the
+direct percentage measurement, whereas RICU additionally derives equivalent
+percentage observations from absolute counts. This provides a concrete example
+of how technical comparison plus clinical review can distinguish a true
+semantic mapping error from a missing but clinically valid derivation.
 
 ---
 
@@ -443,6 +483,19 @@ rather than folded into a broad "medical review fixes" change.
 
 Uncertainty must remain visible. Neither concept should be altered merely to
 reduce disagreement with RICU.
+
+## Manuscript-ready AUMC lymphocyte finding
+
+> For AUMC lymphocytes, the initial WeavEHR/RICU coverage discrepancy was
+> traced to a difference in derivation rather than incompatible harmonized
+> units. Both implementations define the target concept as lymphocyte
+> percentage. WeavEHR maps the direct OMOP percentage measurement, whereas
+> RICU additionally converts an absolute lymphocyte-count source to percentage
+> using white blood cell count (`100 × lymphocytes / WBC`). Medical review
+> confirmed that absolute counts and percentages should remain distinct raw
+> measurements, supporting explicit derivation rather than direct pooling.
+> Thus, the discrepancy represents missing derived source coverage in WeavEHR,
+> not evidence that its direct percentage mapping is clinically incorrect.
 
 ## Manuscript-relevant conclusions
 

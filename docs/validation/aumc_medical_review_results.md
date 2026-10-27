@@ -484,6 +484,60 @@ rather than folded into a broad "medical review fixes" change.
 Uncertainty must remain visible. Neither concept should be altered merely to
 reduce disagreement with RICU.
 
+## Empirical AMSTEL/OMOP crosswalk evidence for AUMC lymphocytes
+
+Aggregate inspection of the WeavEHR AUMC 1.5.0 measurement extraction provides
+high-confidence empirical evidence for the native-AUMC-to-OMOP relationship
+behind the RICU lymphocyte derivation.
+
+The extracted OMOP measurement codes contain:
+
+- OMOP `3002030`:
+  - `Lymfocyten % (bloed)` — 4,606 observations;
+  - `Lymfocyten` — 48 observations;
+  - total direct percentage coverage: 4,654 observations.
+- OMOP `3019198`:
+  - `Lymfocyten (bloed)` with unit `10^9/l` — 11,647 observations;
+  - `Lymfocyten Abs` with unit `10^9/l` — 1 observation.
+- OMOP `3010813`:
+  - white-blood-cell / leukocyte measurements with unit `10^9/l`.
+
+RICU uses native AUMC item `14258` (`Lymfocyten (bloed)`) for its absolute
+lymphocyte source and reports 11,647 observations for that item. The identical
+source label and identical count of 11,647 observations under OMOP `3019198`,
+together with the absolute-count unit `10^9/l`, provide high-confidence
+empirical evidence that OMOP `3019198` represents the AMSTEL/OMOP counterpart
+of the RICU source used for item `14258`.
+
+This is an empirical crosswalk based on source semantics, unit, and aggregate
+multiplicity. No explicit native `itemid` -> OMOP `measurement_concept_id`
+mapping table has yet been identified, so it should not be described as a
+formally proven identifier-level ETL crosswalk.
+
+The denominator required by RICU's `blood_cell_ratio` calculation is also
+available in the OMOP export: OMOP `3010813` represents white blood cell count
+and is expressed in `10^9/l`. Since both absolute lymphocytes and WBC use the
+same count-per-volume unit, the RICU calculation
+
+`100 * absolute_lymphocyte_count / white_blood_cell_count`
+
+is dimensionally consistent and produces the canonical lymphocyte percentage.
+
+### Interpretation
+
+The remaining WeavEHR/RICU discrepancy can therefore be localized more
+precisely. The AMSTEL/OMOP export preserves all inputs required for the RICU
+derivation:
+
+1. direct lymphocyte percentage (`3002030`);
+2. absolute lymphocyte count (`3019198`);
+3. white blood cell count (`3010813`).
+
+The missing coverage is consequently not explained by information loss in the
+OMOP export. It is an implementation gap: WeavEHR currently maps the direct
+percentage source but does not yet derive additional percentage observations
+from the preserved absolute-count and WBC sources.
+
 ## Manuscript-ready AUMC lymphocyte finding
 
 > For AUMC lymphocytes, the initial WeavEHR/RICU coverage discrepancy was

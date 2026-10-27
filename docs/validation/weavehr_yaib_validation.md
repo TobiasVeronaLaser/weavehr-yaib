@@ -446,7 +446,13 @@ Two concepts require targeted implementation decisions:
   directly, while absolute-count item `14258` is converted with RICU's
   `blood_cell_ratio` callback as `100 * lymphocytes / wbc`. Reproducing the
   additional RICU coverage in WeavEHR therefore requires an explicit derived
-  percentage calculation rather than broadening the simple percentage mapping;
+  percentage calculation rather than broadening the simple percentage mapping.
+  Aggregate AMSTEL/OMOP inspection identified OMOP `3019198`
+  (`Lymfocyten (bloed)`, `10^9/l`) with 11,647 observations, exactly matching
+  the RICU count for native AUMC item `14258`; OMOP `3010813` provides WBC in
+  the same `10^9/l` unit. This is high-confidence empirical crosswalk evidence
+  based on label, unit, and multiplicity, although no explicit native-item-to-
+  OMOP identifier mapping table has yet been established;
 - `urine`: additional true urine-output sources are clinically useful, but
   bladder-irrigation (`Spoelblaas`) output should not be interpreted directly
   as urine production without accounting for irrigation input.

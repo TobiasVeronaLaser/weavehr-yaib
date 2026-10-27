@@ -412,43 +412,63 @@ For concepts above the provisional 1% presence-disagreement threshold:
 4. Forward only unresolved semantic or clinical mapping questions to a medical reviewer.
 5. Record whether a WeavEHR implementation change is required.
 
-### Current medical-review candidates
+### AUMC medical review results
 
-All 48 AUMC concepts now have a technical classification.
+All 48 AUMC concepts have a technical classification. Technical triage reduced
+the unresolved clinical/semantic questions to 10 concepts, which were submitted
+for focused medical review. The review was reported complete on 2026-10-27.
 
-For 24 concepts, item-level coverage shows no unresolved mapping difference:
-21 have exact aggregate observation-count matches between WeavEHR and RICU,
-and 3 have complete exact individual item-count matches. Their remaining
-shared-key presence differences are therefore not explained by item coverage
-and are consistent with dataset-version, stay/visit assignment, measurement
-timing, or source-representation differences.
+The resulting decisions are:
 
-Technical triage reduced the 48 AUMC concepts to 10 concepts for focused
-medical review:
-
-| Concept | Presence disagreement | Technical issue | Medical-review question |
+| Concept | Presence disagreement | Decision | Resulting action |
 |---|---:|---|---|
-| `ckmb` | 99.32% | Large mapping/version difference; no OMOP multiplicity effect | Is OMOP concept `3005785` (CK-MB mass / MB-Massa) appropriate for the YAIB `ckmb` concept? |
-| `methb` | 99.11% | Very large additional Met-Hb/FMetHb source population | Should all Met-Hb/FMetHb variants represented by OMOP concept `3007930` be included? |
-| `lymph` | 78.94% | Different lymphocyte source combinations | Which percentage and non-percentage lymphocyte measurements belong in the YAIB `lymph` concept? |
-| `mchc` | 76.41% | Additional MCHC source variants | Are the additional LabZis2 / M.C.H.C. variants clinically equivalent and appropriate for inclusion? |
-| `ptt` | 66.57% | Additional APTT/Cephaline-related sources | Should APTT, CEF-KAOL.T and Cephalinetyd variants be treated as equivalent for `ptt`? |
-| `inr_pt` | 65.56% | 2x OMOP multiplicity plus a large residual source difference | Are all AUMC prothrombin-time/INR variants represented by OMOP concept `3032080` appropriate for `inr_pt`? |
-| `cl` | 65.07% | Additional Astrup / ISE chloride sources | Should blood-gas/Astrup/ISE chloride measurements be pooled with standard laboratory chloride? |
-| `temp` | 37.96% | Multiple measurement sites | Which temperature sites should be included in the YAIB `temp` concept? |
-| `fio2` | 7.17% | Additional `O2 Volume` source | Does the AUMC `O2 Volume` source represent FiO2 sufficiently for inclusion? |
-| `urine` | 5.08% | 2x OMOP multiplicity plus additional urine-output sources | Should spontaneous urine, nephrostomy drains, suprapubic/splint/incontinence and bladder-irrigation output be included in `urine`? |
+| `ckmb` | 99.32% | uncertain | keep mapping unchanged pending unit/distribution/source-semantic follow-up |
+| `methb` | 99.11% | include | retain current Met-Hb/FMetHb coverage |
+| `lymph` | 78.94% | partial / conditional | keep percentage and absolute-count semantics separate; investigate derived handling |
+| `mchc` | 76.41% | include | retain current MCHC variants; treat extreme values separately |
+| `ptt` | 66.57% | include | retain APTT/Cephaline/Kaolin variants |
+| `inr_pt` | 65.56% | uncertain | verify INR versus PT/Quick semantics before changing the mapping |
+| `cl` | 65.07% | include | retain standard and Astrup/ISE chloride |
+| `temp` | 37.96% | include | retain reviewed temperature measurement sites |
+| `fio2` | 7.17% | include | retain both current oxygen-concentration source groups |
+| `urine` | 5.08% | partial / conditional | retain genuine additional urine sources; investigate bladder-irrigation output separately |
 
-Concepts such as `alb`, `fgn`, `mcv`, `cai`, `o2sat`, `plt`, `mch`, `hr`,
-`tnt`, `dbp`, `sbp`, `map`, `resp` and `neut` currently have sufficiently
-specific technical explanations that they do not require medical review at
-this stage.
+Thus, six of the ten reviewed concepts received explicit clinical support for
+their broader WeavEHR source coverage. Their high presence disagreement should
+not be interpreted as evidence of incorrect mapping solely because RICU uses a
+narrower source set.
 
+Two concepts require targeted implementation decisions:
+
+- `lymph`: lymphocyte percentage and absolute lymphocyte count should not be
+  treated as interchangeable raw measurements;
+- `urine`: additional true urine-output sources are clinically useful, but
+  bladder-irrigation (`Spoelblaas`) output should not be interpreted directly
+  as urine production without accounting for irrigation input.
+
+Two concepts remain unresolved:
+
+- `ckmb`: source identity appears plausible, but the reviewed value distribution
+  requires further unit/source investigation;
+- `inr_pt`: INR and prothrombin time are distinct quantities and the source /
+  reference semantics must be confirmed before a mapping change is justified.
+
+The complete reviewer rationale, implementation interpretation and
+manuscript-relevant conclusions are recorded in
+`docs/validation/aumc_medical_review_results.md`. A machine-readable decision
+table is available at
+`docs/validation/aumc_medical_review_decisions.csv`.
+
+The original review packet is retained as provenance in
+`docs/validation/aumc_medical_review_packet.md`.
 ## Remaining technical tasks
 
-- Prepare the 10 unresolved AUMC concepts for focused medical review.
-- Investigate whether any technically identified AUMC missing/additional
-  mappings require implementation changes after review.
+- Implement and revalidate the two conditional AUMC review outcomes separately:
+  `lymph` semantic separation and `urine` bladder-irrigation handling.
+- Follow up the two medically uncertain AUMC concepts (`ckmb` and `inr_pt`)
+  without changing their mappings solely to improve RICU agreement.
+- Preserve the six clinically confirmed AUMC inclusions and document their
+  broader source coverage as intentional.
 - Investigate HiRID `mchc`.
 - Fix and test the HiRID urine missing-value de-accumulation edge case.
 - Investigate MIMIC-IV `bili_dir` and `bnd`.
@@ -461,6 +481,11 @@ this stage.
 ## Derived outcome/cohort validation
 
 ### YAIB/RICU eICU reference cohort reproduction
+
+A standalone, paper-oriented reproduction record containing the reference
+environment, compatibility adaptations, exact cohort/label counts, semantic
+findings and current WeavEHR-substitution status is maintained in
+`docs/validation/yaib_cohort_reference_reproduction.md`.
 
 The original YAIB-cohorts implementation was executed against the local eICU
 RICU reference data in order to obtain the original cohort attrition counts for

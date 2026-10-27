@@ -1,0 +1,11 @@
+yaib_concept,weavehr_concept,presence_disagreement_percent,decision,implementation_action,status,paper_interpretation
+ckmb,creatine_kinase_MB,99.32,uncertain,"Keep current mapping pending unit/distribution/source-semantic investigation",follow_up_required,"Large disagreement remains clinically unresolved"
+methb,methemoglobin,99.11,include,"Retain current Met-Hb/FMetHb mapping",clinically_supported,"Broader WeavEHR source coverage is clinically plausible"
+lymph,lymphocytes,78.94,partial_conditional,"Keep percentage and absolute-count semantics separate; investigate derived conversion",implementation_follow_up,"Semantic difference rather than simple missing-item error"
+mchc,mean_corpuscular_hemoglobin_concentration,76.41,include,"Retain current MCHC variants; investigate extreme values separately",clinically_supported,"Additional WeavEHR variants are clinically supported"
+ptt,partial_thromboplastin_time,66.57,include,"Retain APTT/Cephaline/Kaolin variants",clinically_supported,"Additional WeavEHR assay variants are clinically supported"
+inr_pt,prothrombin_time_international_normalized_ratio,65.56,uncertain,"Verify INR versus PT/Quick semantics before changing mapping",follow_up_required,"Semantic identity remains unresolved"
+cl,chloride,65.07,include,"Retain standard and Astrup/ISE chloride sources",clinically_supported,"Additional WeavEHR chloride sources are clinically supported"
+temp,temperature,37.96,include,"Retain reviewed measurement sites; investigate extreme values separately",clinically_supported,"Broader temperature-site coverage is clinically supported"
+fio2,fraction_of_inspired_oxygen,7.17,include,"Retain O2 concentration and O2 Volume sources",clinically_supported,"Additional WeavEHR FiO2 source is clinically supported"
+urine,urine_output,5.08,partial_conditional,"Retain genuine additional urine sources; investigate source-level exclusion/separation of bladder irrigation output",implementation_follow_up,"RICU is narrower than clinically desirable, but bladder irrigation requires separate handling"

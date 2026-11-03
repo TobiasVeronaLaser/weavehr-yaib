@@ -1,0 +1,17 @@
+ricu_concept,weavehr_item_id,weavehr_item_label,weavehr_n_rows,reference_item_id,reference_item_label,reference_n_rows
+bili,3006140,Bilirubine (bloed)//µmol/l,57386,9945,Bilirubine (bloed),57386
+bili,40757494,Bili Totaal//µmol,1720,6813,Bili Totaal,1720
+bili_dir,3005772,Bilirubine geconjugeerd//µmol,375,6812,Bilirubine geconjugeerd,375
+cai,3021119,Ca++ Astrup//mmol/l,16774,9560,Ca++ Astrup,16774
+hgb,40758903,Hb poct (bloed)//mmol/l,8,19703,Hb poct (bloed),8
+hr,21490872,Hartfrequentie///min,37732398,6640,Hartfrequentie,37732398
+lact,3014111,Laktaat//mmol/l,1476,6837,Laktaat,1476
+mg,3012095,Magnesium (bloed)//mmol/l,127345,9952,Magnesium (bloed),127345
+mg,3033836,Magnesium//mmol/l,4633,6839,Magnesium,4633
+neut,3008342,Neutro's % app (bloed)//Geen,2805,11856,Neutro's % app (bloed),2805
+neut,3018010,Neutrofielen//None,40,6786,Neutrofielen,40
+o2sat,40762499,Saturatie (Monitor)//None,36411768,6709,Saturatie (Monitor),36411768
+resp,3024171,Ademfrequentie Monitor//None,25776086,8874,Ademfrequentie Monitor,25776086
+temp,21490588,Temp Oesophagus//°C,833973,16110,Temp Oesophagus,833973
+temp,21490870,Temp Blaas//°C,927689,13952,Temp Blaas,927689
+tnt,3019800,TroponineT (bloed)//µg/l,23805,10407,TroponineT (bloed),23805

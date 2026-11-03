@@ -1,0 +1,146 @@
+ricu_concept,side,item_id,item_label,item_table,n_rows,exact_count_match,presence_disagreement_pct,above_1pct
+ckmb,reference,6824,CK-MB,numericitems,2315,false,99.3244180287271,true
+ckmb,weavehr,3005785,MB-Massa (bloed)//µg/l,measurement,59014,false,99.3244180287271,true
+methb,reference,11692,Met-Hb (bloed),numericitems,2714,false,99.10942304685464,true
+methb,weavehr,3007930,FMetHb//None; Met-Hb  (bloed)//Geen; Met-Hb (bloed)//Geen,measurement,336872,false,99.10942304685464,true
+neut,reference,14254,Neutro's app (bloed),numericitems,9382,false,84.01114206128133,true
+lymph,reference,14258,Lymfocyten (bloed),numericitems,11647,false,78.94461859979101,true
+lymph,reference,11846,Lymfocyten % (bloed),numericitems,4606,false,78.94461859979101,true
+lymph,weavehr,3002030,Lymfocyten % (bloed)//Geen; Lymfocyten//None,measurement,4654,false,78.94461859979101,true
+mchc,reference,18666,MCHC (bloed),numericitems,2686,false,76.40636126275813,true
+mchc,weavehr,40762530,M.C.H.C.//mmol/l; MCHC (bloed)-LabZis2//mmol/cel; MCHC (bloed)//mmol/cel,measurement,8010,false,76.40636126275813,true
+ptt,reference,17982,APTT (bloed),numericitems,68230,false,66.56546809609648,true
+ptt,weavehr,3013466,APTT  (bloed)//sec; APTT (bloed)//sec; CEF-KAOL.T (bloed)//sec; Cephalinetyd//sec,measurement,204872,false,66.56546809609648,true
+inr_pt,reference,11893,Prothrombinetijd (bloed),numericitems,66847,false,65.55549429343331,true
+inr_pt,weavehr,3032080,Prothrombinetijd  (bloed)//INR; Prothrombinetijd (bloed)//INR,measurement,387380,false,65.55549429343331,true
+cl,reference,9930,Chloor (bloed),numericitems,178659,false,65.07202001035019,true
+cl,weavehr,3018572,Chloor Astrup//mmol/l; Cl (onv.ISE) (bloed)//mmol/l,measurement,346818,false,65.07202001035019,true
+cl,weavehr,3014576,Chloor (bloed)//mmol/l; Chloor//mmol/l,measurement,180102,false,65.07202001035019,true
+temp,reference,8658,Temp Bloed,numericitems,1999754,false,37.95793246288535,true
+temp,weavehr,21490586,PiCCO Tb blood temperature//°C; Temp Bloed//°C,measurement,2004487,false,37.95793246288535,true
+temp,weavehr,3022060,Temp Rectaal//°C,measurement,387259,false,37.95793246288535,true
+temp,weavehr,3025085,Temp Axillair//°C,measurement,202198,false,37.95793246288535,true
+temp,weavehr,3025163,Temp Oor//°C,measurement,52540,false,37.95793246288535,true
+temp,weavehr,3006322,Temp Oraal//°C,measurement,546,false,37.95793246288535,true
+bnd,reference,11586,Staaf % (bloed),numericitems,1905,false,19.23963133640553,true
+bnd,reference,6796,Staafkernig,numericitems,7,false,19.23963133640553,true
+bnd,weavehr,3004809,Staaf % (bloed)//Geen; Staafkernig//None,measurement,1912,false,19.23963133640553,true
+mch,reference,11679,MCH (bloed),numericitems,7959,false,15.10462074978204,true
+mch,weavehr,40762531,M.C.H.//None; MCH (bloed)//amol,measurement,8099,false,15.10462074978204,true
+mcv,reference,9968,MCV (bloed),numericitems,8041,false,15.079538025713664,true
+mcv,weavehr,3023599,M.C.V.//fl; MCV (bloed)//fl,measurement,16364,false,15.079538025713664,true
+crp,reference,10079,CRP (bloed),numericitems,82347,false,13.433975360055527,true
+crp,reference,6825,CRP,numericitems,399,false,13.433975360055527,true
+crp,weavehr,3020460,CRP (bloed)//mg/l; CRP//mg/l,measurement,82746,false,13.433975360055527,true
+tnt,weavehr,3048529,Troponine//ng/ml,measurement,617,false,11.252093262913823,true
+bun,reference,9943,Ureum (bloed),numericitems,107581,false,11.134106783944597,true
+bun,reference,6850,Ureum,numericitems,3138,false,11.134106783944597,true
+bun,weavehr,43534077,Ureum (bloed)//mmol/l; Ureum//mmol/l,measurement,110719,false,11.134106783944597,true
+alp,reference,11984,Alk.Fosf. (bloed),numericitems,59711,false,10.874687611567298,true
+alp,reference,6803,Alk. Fosfatase,numericitems,1971,false,10.874687611567298,true
+alp,weavehr,3035995,Alk. Fosfatase//IE/l; Alk.Fosf. (bloed)//E/l,measurement,61682,false,10.874687611567298,true
+ast,reference,11990,ASAT (bloed),numericitems,76229,false,10.778410923556606,true
+ast,reference,6806,ASAT,numericitems,2187,false,10.778410923556606,true
+ast,weavehr,3013721,ASAT (bloed)//E/l; ASAT//IE/l,measurement,78416,false,10.778410923556606,true
+alt,reference,11978,ALAT (bloed),numericitems,77264,false,10.725467633600044,true
+alt,reference,6800,ALAT,numericitems,2185,false,10.725467633600044,true
+alt,weavehr,3006923,ALAT (bloed)//E/l; ALAT//IE/l,measurement,79449,false,10.725467633600044,true
+fgn,reference,10175,Fibrinogeen  (bloed),numericitems,2744,false,10.690537084398978,true
+fgn,reference,9989,Fibrinogeen (bloed),numericitems,1444,false,10.690537084398978,true
+fgn,reference,6776,Fibrinogeen,numericitems,35,false,10.690537084398978,true
+fgn,weavehr,3016407,Fibrinogeen  (bloed)//g/l; Fibrinogeen (bloed)//g/l,measurement,8376,false,10.690537084398978,true
+alb,reference,9937,Alb.Chem (bloed),numericitems,104004,false,10.454979815511829,true
+alb,reference,6801,Albumine chemisch,numericitems,3064,false,10.454979815511829,true
+alb,weavehr,3024561,Alb.Chem (bloed)//g/l; Albumine chemisch//g/l,measurement,214136,false,10.454979815511829,true
+alb,weavehr,3028286,ALB.FR. (bloed)//Geen; Alb-Fr (bloed)//g/l; Albumine (imm.) (bloed)//g/l,measurement,355,false,10.454979815511829,true
+crea,reference,9941,Kreatinine (bloed),numericitems,196186,false,9.894592529329797,true
+crea,reference,6836,Kreatinine,numericitems,6481,false,9.894592529329797,true
+crea,reference,14216,KREAT enzym. (bloed),numericitems,33,false,9.894592529329797,true
+crea,weavehr,3020564,KREAT enzym. (bloed)//µmol/l; Kreatinine (bloed)//µmol/l; Kreatinine//µmol,measurement,202700,false,9.894592529329797,true
+wbc,reference,9965,Leuco's (bloed),numericitems,191174,false,9.62359028345522,true
+wbc,reference,6779,Leucocyten,numericitems,6474,false,9.62359028345522,true
+wbc,weavehr,3010813,Leuco's (bloed)//10^9/l; Leucocyten//10^9/l,measurement,197648,false,9.62359028345522,true
+phos,reference,9935,Fosfaat (bloed),numericitems,139031,false,9.282634870081951,true
+phos,reference,6828,Fosfaat,numericitems,5212,false,9.282634870081951,true
+phos,weavehr,3003458,Fosfaat (bloed)//mmol/l; Fosfaat//mmol/l,measurement,144243,false,9.282634870081951,true
+ca,reference,9933,Calcium totaal (bloed),numericitems,140461,false,8.74057382821002,true
+ca,reference,6817,Calcium,numericitems,5339,false,8.74057382821002,true
+ca,weavehr,3015377,Calcium totaal (bloed)//mmol/l; Calcium//mmol/l,measurement,145800,false,8.74057382821002,true
+plt,reference,9964,Thrombo's (bloed),numericitems,214452,false,8.571777137548212,true
+plt,reference,6797,Thrombocyten,numericitems,7201,false,8.571777137548212,true
+plt,reference,14252,Thrombo CD61 (bloed),numericitems,393,false,8.571777137548212,true
+plt,reference,10409,Thrombo's citr. bloed (bloed),numericitems,60,false,8.571777137548212,true
+plt,weavehr,3007461,Thrombo's (bloed)//10^9/l; Thrombo's citr. bloed (bloed)//10^9/l; Thrombocyten//10^9/l,measurement,221713,false,8.571777137548212,true
+fio2,reference,12279,O2 concentratie,numericitems,15645395,false,7.174918924359809,true
+fio2,weavehr,3025408,O2 concentratie//Geen; Zephyros O2i//Geen,measurement,15645447,false,7.174918924359809,true
+fio2,weavehr,3020716,O2 Volume(2)//None; O2 Volume//None,measurement,85391,false,7.174918924359809,true
+ck,reference,11998,CK (bloed),numericitems,107983,false,7.104740388735247,true
+ck,reference,6822,CK,numericitems,4355,false,7.104740388735247,true
+ck,weavehr,3007220,CK (bloed)//E/l; CK//IE/l,measurement,112338,false,7.104740388735247,true
+po2,reference,9996,PO2 (bloed),numericitems,654417,false,6.795213610106011,true
+po2,reference,7433,PO2,numericitems,25372,false,6.795213610106011,true
+po2,reference,21214,PO2 (bloed) - kPa,numericitems,9392,false,6.795213610106011,true
+po2,weavehr,3027315,PO2 (bloed) - kPa//kPa; PO2 (bloed)//mmHg; PO2//mmHg,measurement,689181,false,6.795213610106011,true
+be,reference,9994,B.E. (bloed),numericitems,654665,false,6.7594241221355,true
+be,reference,6807,B.E.,numericitems,25210,false,6.7594241221355,true
+be,weavehr,3012501,B.E. (bloed)//mmol/l; B.E.//mmol/l,measurement,679875,false,6.7594241221355,true
+bicar,reference,9992,Act.HCO3 (bloed),numericitems,657442,false,6.746021871928537,true
+bicar,reference,6810,HCO3,numericitems,25251,false,6.746021871928537,true
+bicar,weavehr,3006576,Act.HCO3 (bloed)//mmol/l; HCO3//mmol/l,measurement,682693,false,6.746021871928537,true
+ph,reference,12310,pH (bloed),numericitems,659777,false,6.73392009573383,true
+ph,reference,6848,PH,numericitems,25371,false,6.73392009573383,true
+ph,weavehr,3010421,PH//None; pH (bloed)//Geen,measurement,685148,false,6.73392009573383,true
+pco2,reference,9990,pCO2 (bloed),numericitems,659807,false,6.701209622503684,true
+pco2,reference,6846,PCO2,numericitems,25348,false,6.701209622503684,true
+pco2,reference,21213,PCO2 (bloed) - kPa,numericitems,9464,false,6.701209622503684,true
+pco2,weavehr,3013290,PCO2 (bloed) - kPa//kPa; PCO2//mmHg; pCO2 (bloed)//mmHg,measurement,694619,false,6.701209622503684,true
+lact,reference,10053,Lactaat (bloed),numericitems,182155,false,6.692934635936741,true
+lact,reference,9580,Laktaat Astrup,numericitems,917,false,6.692934635936741,true
+lact,weavehr,3047181,Lactaat (bloed)//mmol/l; Laktaat Astrup//mmol/l,measurement,183072,false,6.692934635936741,true
+k,reference,10285,K (onv.ISE) (bloed),numericitems,542007,false,6.609697327994697,true
+k,reference,9927,Kalium (bloed),numericitems,220787,false,6.609697327994697,true
+k,reference,9556,Kalium Astrup,numericitems,20082,false,6.609697327994697,true
+k,reference,6835,Kalium,numericitems,8612,false,6.609697327994697,true
+k,weavehr,3005456,K (onv.ISE) (bloed)//mmol/l; Kalium Astrup//mmol/l,measurement,562089,false,6.609697327994697,true
+k,weavehr,3023103,Kalium (bloed)//mmol/l; Kalium//mmol/l,measurement,229399,false,6.609697327994697,true
+glu,reference,9947,Glucose (bloed),numericitems,820898,false,6.604921788259103,true
+glu,reference,9557,Glucose Astrup,numericitems,20195,false,6.604921788259103,true
+glu,reference,6833,Glucose Bloed,numericitems,7892,false,6.604921788259103,true
+glu,weavehr,3020491,Glucose (bloed)//mmol/l; Glucose Astrup//mmol/l; Glucose Bloed//mmol/l,measurement,848985,false,6.604921788259103,true
+na,reference,10284,Na (onv.ISE) (bloed),numericitems,527724,false,6.599342698567374,true
+na,reference,9924,Natrium (bloed),numericitems,226219,false,6.599342698567374,true
+na,reference,9555,Natrium Astrup,numericitems,19785,false,6.599342698567374,true
+na,reference,6840,Natrium,numericitems,8602,false,6.599342698567374,true
+na,weavehr,3000285,Na (onv.ISE) (bloed)//mmol/l; Natrium Astrup//mmol/l,measurement,547509,false,6.599342698567374,true
+na,weavehr,3019550,Natrium (bloed)//mmol/l; Natrium//mmol/l,measurement,234821,false,6.599342698567374,true
+hgb,reference,10286,Hb(v.Bgs) (bloed),numericitems,493874,false,6.403110444154275,true
+hgb,reference,9960,Hb (bloed),numericitems,216027,false,6.403110444154275,true
+hgb,reference,9553,CtHB Astrup,numericitems,21409,false,6.403110444154275,true
+hgb,reference,6778,Hemoglobine,numericitems,7603,false,6.403110444154275,true
+hgb,weavehr,40762351,CtHB Astrup//mmol/l; Hb (bloed)//mmol/l; Hb(v.Bgs) (bloed)//mmol/l; Hemoglobine//mmol/l,measurement,738913,false,6.403110444154275,true
+cai,reference,10267,Ca-ion (7.4) (bloed),numericitems,480104,false,6.175351040433091,true
+cai,reference,9561,CA++(7.4) Astrup,numericitems,13584,false,6.175351040433091,true
+cai,reference,8915,CA++(7.4),numericitems,38,false,6.175351040433091,true
+cai,reference,6815,Ca. geioniseerd,numericitems,2,false,6.175351040433091,true
+cai,weavehr,3048816,CA++(7.4) Astrup//mmol/l; CA++(7.4)//mmol/l; Ca-ion (7.4) (bloed)//mmol/l,measurement,493726,false,6.175351040433091,true
+dbp,reference,6643,ABP diastolisch,numericitems,33343274,false,5.887957556632764,true
+dbp,weavehr,21490851,ABP diastolisch II//mmHg; ABP diastolisch//mmHg; PiCCO APd//mmHg,measurement,33402500,false,5.887957556632764,true
+dbp,weavehr,21492240,Niet invasieve bloeddruk diastolisch//mmHg,measurement,190431,false,5.887957556632764,true
+sbp,reference,6641,ABP systolisch,numericitems,33343613,false,5.878281322943225,true
+sbp,weavehr,21490853,ABP systolisch II//mmHg; ABP systolisch//mmHg; PiCCO APs//mmHg,measurement,33402861,false,5.878281322943225,true
+sbp,weavehr,21492239,Niet invasieve bloeddruk systolisch//mmHg,measurement,192123,false,5.878281322943225,true
+map,reference,6642,ABP gemiddeld,numericitems,33352770,false,5.8739566257965015,true
+map,weavehr,21490852,ABP gemiddeld II//mmHg; ABP gemiddeld//mmHg; PiCCO APm//mmHg,measurement,33412768,false,5.8739566257965015,true
+map,weavehr,21492241,Niet invasieve bloeddruk gemiddeld//mmHg,measurement,190760,false,5.8739566257965015,true
+urine,reference,8794,UrineCAD,numericitems,1632547,false,5.080206196162084,true
+urine,weavehr,3014315,UrineCAD//ml; UrineIncontinentie//ml; UrineSplint Li//ml; UrineSplint Re//ml; UrineSupraPubis//ml; UrineUP//ml,measurement,3319256,false,5.080206196162084,true
+urine,weavehr,3007123,UrineSpontaan//ml,measurement,29366,false,5.080206196162084,true
+urine,weavehr,21491173,Nefrodrain li Uit//ml; Nefrodrain re Uit//ml,measurement,15124,false,5.080206196162084,true
+urine,weavehr,3016267,Spoelblaas Uit//ml,measurement,1290,false,5.080206196162084,true
+resp,reference,12266,Ademfreq.,numericitems,15613362,false,4.479420137841325,true
+resp,weavehr,3007646,Ademfreq.(2)///min; Ademfreq.///min; Ademfrequentie Evita//None; Rate (Bipap Vision)///min; Zephyros Frequentie///min,measurement,15699470,false,4.479420137841325,true
+resp,weavehr,3026892,Ademfreq. Spontaan nieuw///min; Ademfrequentie Spontaan(2)//None; Ademfrequentie Spontaan//None; Frequentie Spontaan//None,measurement,45182,false,4.479420137841325,true
+hr,weavehr,3027018,IABP HF///min; PiCCO HF Hartfrequentie///min,measurement,87880,false,1.5216124939063345,true
+o2sat,reference,12311,O2-Saturatie (bloed),numericitems,652901,false,0.6697186930490353,false
+o2sat,reference,8903,SO2,numericitems,24404,false,0.6697186930490353,false
+o2sat,weavehr,42869608,O2-Saturatie (bloed)//Geen; SO2 (Hb) (bloed)//Geen; SO2//None,measurement,677492,false,0.6697186930490353,false

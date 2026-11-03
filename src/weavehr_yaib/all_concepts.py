@@ -72,28 +72,43 @@ class AllConceptsExportResult:
 
 
 def discover_dataset_concepts(concept_root: str | Path, dataset: str) -> list[ConceptFile]:
-    """Discover all concept parquets named ``<dataset>.parquet``.
+    """Discover all concept parquets for one dataset.
 
-    WeavEHR's standard layout is ``concept/<concept>/<version>/<dataset>.parquet``.
-    Nested concept identifiers are supported as well; the concept name is the
-    path between ``concept_root`` and the version directory.
+    Supported layouts:
+        concept/<concept>/<version>/<dataset>/<dataset_version>.parquet
+        concept/<concept>/<version>/<dataset>.parquet
     """
     root = Path(concept_root).expanduser().resolve()
-    candidates = sorted(root.rglob(f"{dataset}.parquet"))
-    if not candidates:
-        candidates = sorted(root.rglob(f"{dataset.replace('-', '_')}.parquet"))
+    dataset_names = (dataset, dataset.replace("-", "_"))
+
+    candidates: list[Path] = []
+    for dataset_name in dataset_names:
+        candidates.extend(root.rglob(f"{dataset_name}.parquet"))
+        candidates.extend(root.rglob(f"{dataset_name}/*.parquet"))
+    candidates = sorted(set(candidates))
 
     found: list[ConceptFile] = []
     for path in candidates:
         rel = path.relative_to(root)
-        if len(rel.parts) < 2:
+
+        # New layout:
+        # <concept>/<concept_version>/<dataset>/<dataset_version>.parquet
+        if len(rel.parts) >= 4 and rel.parts[-2] in dataset_names:
+            version = rel.parts[-3]
+            concept_parts = rel.parts[:-3]
+
+        # Legacy layout:
+        # <concept>/<concept_version>/<dataset>.parquet
+        elif len(rel.parts) >= 3:
+            version = rel.parts[-2]
+            concept_parts = rel.parts[:-2]
+        else:
             continue
-        version = rel.parts[-2] if len(rel.parts) >= 3 else None
-        concept_parts = rel.parts[:-2] if len(rel.parts) >= 3 else rel.parts[:-1]
-        name = "/".join(concept_parts) or path.parent.name
-        # Most WeavEHR concept roots are <concept>/<version>/<dataset>.parquet.
-        if len(rel.parts) == 3:
-            name = rel.parts[0]
+
+        name = "/".join(concept_parts)
+        if not name:
+            continue
+
         found.append(ConceptFile(name=name, version=version, path=path))
 
     # Keep one deterministic file per logical concept if recursive aliases collide.

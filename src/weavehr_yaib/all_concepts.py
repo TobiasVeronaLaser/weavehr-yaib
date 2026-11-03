@@ -23,6 +23,7 @@ from .stays import (
     SIC_DATASETS,
     dataset_stay_spec,
     find_dataset_stay_file,
+    make_hourly_stay_grid,
     require_raw_stay_table_compatible,
     require_weavehr_stays,
     resolve_dataset_stay_table,
@@ -104,21 +105,7 @@ def discover_dataset_concepts(concept_root: str | Path, dataset: str) -> list[Co
 
 
 def _grid_from_normalized_stays(stays: pl.LazyFrame, max_hours: int | None) -> pl.LazyFrame:
-    los = stays.with_columns((pl.col("outtime_hours") - pl.col("intime_hours")).alias("los_hours"))
-    end_expr = pl.col("los_hours").floor().cast(pl.Int64)
-    if max_hours is not None:
-        end_expr = pl.min_horizontal(end_expr, pl.lit(max_hours))
-    return (
-        los.with_columns(
-            pl.when(pl.col("los_hours").is_null() | (pl.col("los_hours") < 0))
-            .then(0 if max_hours is None else max_hours)
-            .otherwise(end_expr)
-            .alias("end_time")
-        )
-        .select("stay_id", pl.int_ranges(0, pl.col("end_time") + 1).alias("time"))
-        .explode("time")
-        .with_columns(pl.col("time").cast(pl.Int64))
-    )
+    return make_hourly_stay_grid(stays, max_hours=max_hours)
 
 
 # Additional RICU concepts that are not part of the standard dynamic-variable

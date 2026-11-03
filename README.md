@@ -380,6 +380,35 @@ Without an explicit stay table, HiRID stay windows follow RICU: they start at
 the WeavEHR `ICU_ADMISSION` event and end at the latest `OBSERVATION` event of
 the patient.
 
+## Comparing YAIB-cohorts outputs: ricu vs WeavEHR backend
+
+[YAIB-cohorts](https://github.com/rvandewater/YAIB-cohorts) can extract its task cohorts with ricu or
+with its WeavEHR backend. `weavehr-yaib-compare-cohorts` compares the task outputs of the two runs
+(`<out_dir>/<task>/<src>/{outc,dyn,sta}.parquet` and `attrition.csv`):
+
+```bash
+weavehr-yaib-compare-cohorts \
+    --ricu-dir /path/to/data/ricu --ricu-src miiv \
+    --weavehr-dir /path/to/data/weavehr --weavehr-src mimic-iv \
+    --output-dir reports/mimic-iv
+```
+
+Use separate output directories for the two runs, e.g. `out_dir: "../data/{backend}"` in
+YAIB-cohorts' `config.yaml`; ricu and WeavEHR share some dataset names (`hirid`, `aumc`).
+
+Per task, `<output-dir>/<task>/` holds:
+
+- `attrition.csv`: excluded and remaining stays per selection criterion, for both runs;
+- `cohort.csv`: stays in each cohort and in both;
+- `labels.csv`: on the label rows present in both, the agreement and the stays with a positive
+  label (binary tasks) or the fraction of equal values and their correlation (regression tasks);
+- `variables.csv`: per static and hourly variable, on the stays and hours present in both, the values
+  in each run, in both, the fraction of equal values (relative tolerance `--rtol`, default 1e-3) and
+  the coverage of WeavEHR relative to ricu.
+
+`summary.csv` has one row per task, including the variables that are not fully equal. The reports
+contain counts and fractions only, no stay IDs or values.
+
 ## Configuration
 
 Notebook defaults can be overridden with environment variables:

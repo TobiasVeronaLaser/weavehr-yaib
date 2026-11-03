@@ -37,6 +37,7 @@ dev = [
 [project.scripts]
 weavehr-yaib = "weavehr_yaib.cli:main"
 weavehr-yaib-dyn = "weavehr_yaib.cli:main"
+weavehr-yaib-compare-cohorts = "weavehr_yaib.cohort_comparison:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
